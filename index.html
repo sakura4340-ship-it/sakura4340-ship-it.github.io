@@ -207,5 +207,47 @@
     }
   });
 </script>
+
+  <style>
+  .pop-number {
+    position: absolute;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #2563eb;
+    animation: popUp 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  @keyframes popUp {
+    0%   { transform: translateY(0) scale(1); opacity: 1; }
+    50%  { transform: translateY(-30px) scale(1.4); opacity: 0.9; }
+    100% { transform: translateY(-60px) scale(0.8); opacity: 0; }
+  }
+</style>
+
+<script>
+  // 入力欄に数字入力時に飛び出すポップアップ
+  document.querySelectorAll("input[type='number']").forEach(input=>{
+    input.addEventListener("input", e=>{
+      const val = e.target.value;
+      if(!val) return;
+
+      const rect = e.target.getBoundingClientRect();
+      const span = document.createElement("span");
+      span.className = "pop-number";
+      span.textContent = val;
+
+      // 表示位置を調整（入力欄の上あたり）
+      span.style.left = (rect.left + window.scrollX + rect.width/2 - 10) + "px";
+      span.style.top  = (rect.top + window.scrollY - 10) + "px";
+
+      document.body.appendChild(span);
+
+      // 1秒後に削除
+      setTimeout(()=>span.remove(),1000);
+    });
+  });
+</script>
 </body>
 </html>
