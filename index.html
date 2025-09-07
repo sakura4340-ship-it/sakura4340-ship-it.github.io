@@ -118,6 +118,15 @@
       <div class="card"><h3>総支払額</h3><div id="total" class="val">-</div></div>
       <div class="card"><h3>利息総額</h3><div id="interest" class="val">-</div></div>
     </div>
+
+    <div class="zoom-keys">
+  <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+  <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+  <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+  <button data-k="00">00</button><button data-k="0">0</button><button data-k=",">,</button>
+  <button data-k="←">⌫</button>
+</div>
+
   </section>
 
   <section class="panel" style="margin-top:16px">
@@ -358,18 +367,26 @@
   });
 
   // 既存：キー（0-9/00/⌫）
-  scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
-    b.addEventListener("click", ()=>{
-      const k=b.dataset.k;
-      if(k==="←"){
-        const raw = unformat(zInput.value);
-        zInput.value = withCommas(raw.slice(0,-1));
-        return;
-      }
-      const raw = unformat(zInput.value) + (k==="00" ? "00" : k);
+scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    const k=b.dataset.k;
+    if(k==="←"){
+      const raw = unformat(zInput.value);
+      zInput.value = withCommas(raw.slice(0,-1));
+      return;
+    }
+    if(k===","){
+      // カンマキーは「見た目だけ」→ 何もしなくてもOK
+      // ここでは即座に再整形をかけるだけ
+      const raw = unformat(zInput.value);
       zInput.value = withCommas(raw);
-    });
+      return;
+    }
+    const raw = unformat(zInput.value) + (k==="00" ? "00" : k);
+    zInput.value = withCommas(raw);
   });
+});
+
 
   // 追加：直接キーボード入力でも即カンマ整形
   zInput.addEventListener("input", ()=>{
