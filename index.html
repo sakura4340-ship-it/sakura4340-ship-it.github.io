@@ -226,28 +226,103 @@
   }
 </style>
 
+<style>
+  /* ====== 大きく飛び出す数値入力パッド ====== */
+  #zoom-scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);
+    backdrop-filter:saturate(120%) blur(2px);display:none;align-items:center;justify-content:center;z-index:9999}
+  #zoom-scrim.show{display:flex}
+  .zoom-card{width:min(92vw,560px);background:#0b1220;border:1px solid #334155;border-radius:16px;
+    box-shadow:0 40px 120px rgba(0,0,0,.5);transform-origin:center;
+    animation:zoomIn .18s ease-out; }
+  @keyframes zoomIn{
+    from{transform:perspective(1000px) translateY(24px) scale(.92) rotateX(6deg);opacity:0}
+    to{transform:perspective(1000px) translateY(0) scale(1) rotateX(0);opacity:1}
+  }
+  .zoom-head{padding:16px 20px;font-size:14px;color:#93c5fd;border-bottom:1px solid #1f2937}
+  .zoom-body{padding:16px 20px}
+  .zoom-input{width:100%;font-size:clamp(36px,6vw,56px);line-height:1.2;padding:16px 18px;border-radius:14px;
+    border:1px solid #475569;background:#0f172a;color:#e5e7eb;text-align:right;font-variant-numeric:tabular-nums}
+  .zoom-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+  .zoom-keys button{padding:18px 0;font-size:22px;border-radius:12px;border:1px solid #334155;background:#111827;color:#e5e7eb;cursor:pointer}
+  .zoom-actions{display:flex;gap:10px;margin-top:16px}
+  .zoom-actions .btn{flex:1;padding:14px;border-radius:12px;border:1px solid #334155;background:#1f2937;color:#e5e7eb;cursor:pointer}
+  .zoom-actions .btn.primary{background:#4f46e5;border-color:#4f46e5}
+</style>
+
+<div id="zoom-scrim" aria-hidden="true">
+  <div class="zoom-card" role="dialog" aria-modal="true" aria-label="拡大入力">
+    <div class="zoom-head">大きな数値入力</div>
+    <div class="zoom-body">
+      <input id="zoomValue" class="zoom-input" type="text" inputmode="numeric" aria-label="数値">
+      <div class="zoom-keys">
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+        <button data-k="00">00</button><button data-k="0">0</button><button data-k="←">⌫</button>
+      </div>
+      <div class="zoom-actions">
+        <button id="zoomCancel" class="btn">キャンセル</button>
+        <button id="zoomOk" class="btn primary">決定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-  // 入力欄に数字入力時に飛び出すポップアップ
-  document.querySelectorAll("input[type='number']").forEach(input=>{
-    input.addEventListener("input", e=>{
-      const val = e.target.value;
-      if(!val) return;
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const scrim = $("zoom-scrim");
+  const zInput = $("zoomValue");
+  let src = null;
 
-      const rect = e.target.getBoundingClientRect();
-      const span = document.createElement("span");
-      span.className = "pop-number";
-      span.textContent = val;
+  // すべての数値入力を対象に（モバイルで数字キーボードを出す）
+  document.querySelectorAll('input[type="number"]').forEach(inp=>{
+    inp.setAttribute("inputmode","numeric");
+    // フォーカス/クリックで拡大パッドを開く
+    function open(){
+      src = inp;
+      zInput.value = inp.value || "";
+      scrim.classList.add("show");
+      document.body.style.overflow = "hidden";
+      setTimeout(()=>{ zInput.focus(); zInput.select(); }, 0);
+    }
+    inp.addEventListener("focus", (e)=>{ e.preventDefault(); inp.blur(); open(); }, {passive:false});
+    inp.addEventListener("click", (e)=>{ e.preventDefault(); inp.blur(); open(); }, {passive:false});
+  });
 
-      // 表示位置を調整（入力欄の上あたり）
-      span.style.left = (rect.left + window.scrollX + rect.width/2 - 10) + "px";
-      span.style.top  = (rect.top + window.scrollY - 10) + "px";
-
-      document.body.appendChild(span);
-
-      // 1秒後に削除
-      setTimeout(()=>span.remove(),1000);
+  // パッドのキー入力
+  scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const k=b.dataset.k;
+      if(k==="←"){ zInput.value = zInput.value.slice(0,-1); return; }
+      zInput.value += k;
     });
   });
+
+  // 決定・キャンセル
+  $("zoomOk").addEventListener("click", ()=>close(true));
+  $("zoomCancel").addEventListener("click", ()=>close(false));
+  scrim.addEventListener("click", (e)=>{ if(e.target===scrim) close(false); });
+  document.addEventListener("keydown", (e)=>{
+    if(!scrim.classList.contains("show")) return;
+    if(e.key==="Escape") close(false);
+    if(e.key==="Enter") close(true);
+  });
+
+  function close(commit){
+    if(commit && src){
+      const v = zInput.value.replace(/[^\d.-]/g,"");
+      src.value = v || "0";
+      // 既存ロジックを動かすためにイベント発火
+      src.dispatchEvent(new Event("input",{bubbles:true}));
+      src.dispatchEvent(new Event("change",{bubbles:true}));
+    }
+    scrim.classList.remove("show");
+    document.body.style.overflow = "";
+    src = null;
+  }
+})();
 </script>
+
 </body>
 </html>
