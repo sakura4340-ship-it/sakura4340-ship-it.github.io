@@ -324,5 +324,84 @@
 })();
 </script>
 
+  
+<script>
+(function(){
+  // --- 追加：カンマ整形ヘルパー ---
+  const unformat = s => (s||"").toString().replace(/[^\d\-]/g,"");           // 数字とマイナス以外除去
+  const withCommas = s => {
+    if(!s) return "";
+    const neg = s.startsWith("-") ? "-" : "";
+    s = s.replace(/^-/, "");                         // 符号は一旦外す
+    return neg + s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const scrim = document.getElementById("zoom-scrim");
+  const zInput = document.getElementById("zoomValue");
+  const okBtn  = document.getElementById("zoomOk");
+  const cancelBtn = document.getElementById("zoomCancel");
+  let src = null;
+
+  // 既存：数値欄を拡大パッド起動対象に
+  document.querySelectorAll('input[type="number"]').forEach(inp=>{
+    inp.setAttribute("inputmode","numeric");
+    function open(){
+      src = inp;
+      // 起動時点で元値をカンマ付きで表示
+      zInput.value = withCommas(unformat(inp.value||""));
+      scrim.classList.add("show");
+      document.body.style.overflow = "hidden";
+      setTimeout(()=>{ zInput.focus(); zInput.select(); }, 0);
+    }
+    inp.addEventListener("focus",(e)=>{ e.preventDefault(); inp.blur(); open(); }, {passive:false});
+    inp.addEventListener("click",(e)=>{ e.preventDefault(); inp.blur(); open(); }, {passive:false});
+  });
+
+  // 既存：キー（0-9/00/⌫）
+  scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const k=b.dataset.k;
+      if(k==="←"){
+        const raw = unformat(zInput.value);
+        zInput.value = withCommas(raw.slice(0,-1));
+        return;
+      }
+      const raw = unformat(zInput.value) + (k==="00" ? "00" : k);
+      zInput.value = withCommas(raw);
+    });
+  });
+
+  // 追加：直接キーボード入力でも即カンマ整形
+  zInput.addEventListener("input", ()=>{
+    const caretToEnd = document.activeElement === zInput; // ざっくり末尾に揃える
+    const raw = unformat(zInput.value);
+    zInput.value = withCommas(raw);
+    if(caretToEnd) zInput.selectionStart = zInput.selectionEnd = zInput.value.length;
+  });
+
+  // 決定・キャンセル
+  okBtn.addEventListener("click", ()=>close(true));
+  cancelBtn.addEventListener("click", ()=>close(false));
+  scrim.addEventListener("click", (e)=>{ if(e.target===scrim) close(false); });
+  document.addEventListener("keydown", (e)=>{
+    if(!scrim.classList.contains("show")) return;
+    if(e.key==="Escape") close(false);
+    if(e.key==="Enter") close(true);
+  });
+
+  function close(commit){
+    if(commit && src){
+      const numeric = unformat(zInput.value) || "0";
+      src.value = numeric;  // ← 元のinput[type=number]へはカンマ無しの数値を渡す
+      src.dispatchEvent(new Event("input",{bubbles:true}));
+      src.dispatchEvent(new Event("change",{bubbles:true}));
+    }
+    scrim.classList.remove("show");
+    document.body.style.overflow = "";
+    src = null;
+  }
+})();
+</script>
+
 </body>
 </html>
