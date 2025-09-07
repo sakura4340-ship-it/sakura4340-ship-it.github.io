@@ -119,13 +119,6 @@
       <div class="card"><h3>利息総額</h3><div id="interest" class="val">-</div></div>
     </div>
 
-    <div class="zoom-keys">
-  <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
-  <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
-  <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
-  <button data-k="00">00</button><button data-k="0">0</button><button data-k=",">,</button>
-  <button data-k="←">⌫</button>
-</div>
 
   </section>
 
@@ -263,12 +256,26 @@
     <div class="zoom-head">大きな数値入力</div>
     <div class="zoom-body">
       <input id="zoomValue" class="zoom-input" type="text" inputmode="numeric" aria-label="数値">
-      <div class="zoom-keys">
-        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
-        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
-        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
-        <button data-k="00">00</button><button data-k="0">0</button><button data-k="←">⌫</button>
-      </div>
+      scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    const k=b.dataset.k;
+    if(k==="←"){
+      const raw = unformat(zInput.value);
+      zInput.value = withCommas(raw.slice(0,-1));
+      return;
+    }
+    if(k===","){
+      // カンマキーは「見た目だけ」→ 何もしなくてもOK
+      // ここでは即座に再整形をかけるだけ
+      const raw = unformat(zInput.value);
+      zInput.value = withCommas(raw);
+      return;
+    }
+    const raw = unformat(zInput.value) + (k==="00" ? "00" : k);
+    zInput.value = withCommas(raw);
+  });
+});
+
       <div class="zoom-actions">
         <button id="zoomCancel" class="btn">キャンセル</button>
         <button id="zoomOk" class="btn primary">決定</button>
