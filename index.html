@@ -301,12 +301,25 @@
 
   // パッドのキー入力
   scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
-    b.addEventListener("click", ()=>{
-      const k=b.dataset.k;
-      if(k==="←"){ zInput.value = zInput.value.slice(0,-1); return; }
-      zInput.value += k;
-    });
+  b.addEventListener("click", ()=>{
+    const k=b.dataset.k;
+    if(k==="←"){
+      const raw = unformat(zInput.value);
+      zInput.value = withCommas(raw.slice(0,-1));
+      return;
+    }
+    if(k===","){
+      // カンマキーは「見た目だけ」→ 何もしなくてもOK
+      // ここでは即座に再整形をかけるだけ
+      const raw = unformat(zInput.value);
+      zInput.value = withCommas(raw);
+      return;
+    }
+    const raw = unformat(zInput.value) + (k==="00" ? "00" : k);
+    zInput.value = withCommas(raw);
   });
+});
+
 
   // 決定・キャンセル
   $("zoomOk").addEventListener("click", ()=>close(true));
