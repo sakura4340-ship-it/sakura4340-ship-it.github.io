@@ -152,6 +152,47 @@
   }
   $("calc").addEventListener("click",compute); compute();
 })();
+
+    // ① 右クリックのメニューを無効化
+  window.addEventListener('contextmenu', (e) => e.preventDefault(), {passive:false});
+
+  // ② 中クリック（ホイール押し）や他ボタンでのクリック反応を無効化
+  //    ※ 左クリック(0)以外は基本すべて無視
+  window.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) { e.preventDefault(); }
+  }, {capture:true});
+
+  // 中クリックで新しいタブが開くのを防止
+  window.addEventListener('auxclick', (e) => e.preventDefault(), {capture:true});
+
+  // ③ マウスの戻る/進むボタンによる履歴遷移を無効化
+  //    （ブラウザのBack/Forwardを押したときも同様にブロック）
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', () => {
+    history.pushState(null, '', location.href);
+  });
+
+  // ④ 数値入力がホイールで勝手に変わるのを防止
+  function blockWheelOnNumberInputs(scope=document) {
+    scope.querySelectorAll('input[type="number"]').forEach((el) => {
+      el.addEventListener('wheel', (e) => {
+        // フォーカス中でもホイール変更を無効化
+        e.preventDefault();
+      }, {passive:false});
+    });
+  }
+  blockWheelOnNumberInputs();
+  // 動的に追加される場合に備えて
+  const mo = new MutationObserver(() => blockWheelOnNumberInputs());
+  mo.observe(document.documentElement, {childList:true, subtree:true});
+
+  // ⑤ テキストの誤選択が気になる場合：全体を選択不可（入力欄は除外）
+  document.addEventListener('selectstart', (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLInputElement) && !(t instanceof HTMLTextAreaElement) && !(t.isContentEditable)) {
+      e.preventDefault();
+    }
+  });
 </script>
 </body>
 </html>
