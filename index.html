@@ -18,6 +18,12 @@
       font-family: 'Noto Sans JP', sans-serif;
       background: #0f172a;
       color: #e5e7eb;
+      
+      webkit-user-select: none; /* Safari/iPhone */
+      -moz-user-select: none;    /* Firefox */
+      -ms-user-select: none;     /* 古いEdge */
+      user-select: none;         /* 標準 */
+      
     }
     button {
       background-color: #2563eb;
@@ -30,6 +36,13 @@
     }
     button:hover {
       background-color: #1d4ed8;
+    }
+
+    input, textarea {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
     }
   </style>
 
