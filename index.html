@@ -3,60 +3,27 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-  
 <title>自動車ローン シミュレーター</title>
 
-<!-- iPhone向け：ホーム画面追加用 -->
+<!-- iPhone/PWA -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="ローン計算">
 <meta name="theme-color" content="#0f172a">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" sizes="512x512" href="icon-512.png">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
 
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap" rel="stylesheet">
-<style>
-    body {
-      font-family: 'Noto Sans JP', sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      
-      webkit-user-select: none; /* Safari/iPhone */
-      -moz-user-select: none;    /* Firefox */
-      -ms-user-select: none;     /* 古いEdge */
-      user-select: none;         /* 標準 */
-      
-    }
-    button {
-      background-color: #2563eb;
-      color: white;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #1d4ed8;
-    }
-
-    input, textarea {
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
-      user-select: text;
-    }
-  </style>
-
-  <link rel="apple-touch-icon" href="icon-180.png">
-  <link rel="icon" href="favicon.ico" type="image/x-icon">
-
-
-  <link rel="icon" sizes="512x512" href="ico-512.png">
-  
 <style>
   :root{--gap:12px;--radius:12px}
   *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif}
   html,body{height:100%}
   body{margin:0;background:#0f172a;color:#e5e7eb;-webkit-text-size-adjust:100%}
+
+  /* 文字選択禁止（入力欄だけ許可） */
+  body{-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}
+  input,textarea{-webkit-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}
+
   header{padding:24px 16px;text-align:center;background:linear-gradient(180deg,#111827,#0f172a)}
   header h1{margin:.2rem 0;font-size:clamp(20px,4vw,28px)}
   header p{margin:.2rem 0;color:#cbd5e1}
@@ -85,48 +52,56 @@
   .scroll{max-height:55vh;overflow:auto;border-radius:12px;-webkit-overflow-scrolling:touch}
   footer{padding:24px;text-align:center;color:#94a3b8}
   .note{color:#9ca3af;font-size:12px;margin-top:6px}
-  .ios-hint{font-size:12px;color:#a3e635}
+
+  /* ====== 拡大入力パッド ====== */
+  #zoom-scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:saturate(120%) blur(2px);display:none;align-items:center;justify-content:center;z-index:9999}
+  #zoom-scrim.show{display:flex}
+  .zoom-card{width:min(92vw,560px);background:#0b1220;border:1px solid #334155;border-radius:16px;box-shadow:0 40px 120px rgba(0,0,0,.5);transform-origin:center;animation:zoomIn .18s ease-out}
+  @keyframes zoomIn{from{transform:perspective(1000px) translateY(24px) scale(.92) rotateX(6deg);opacity:0}to{transform:perspective(1000px) translateY(0) scale(1) rotateX(0);opacity:1}}
+  .zoom-head{padding:16px 20px;font-size:14px;color:#93c5fd;border-bottom:1px solid #1f2937}
+  .zoom-body{padding:16px 20px}
+  .zoom-input{width:100%;font-size:clamp(36px,6vw,56px);line-height:1.2;padding:16px 18px;border-radius:14px;border:1px solid #475569;background:#0f172a;color:#e5e7eb;text-align:right;font-variant-numeric:tabular-nums}
+  .zoom-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+  .zoom-keys button{padding:18px 0;font-size:22px;border-radius:12px;border:1px solid #334155;background:#111827;color:#e5e7eb;cursor:pointer}
+  .zoom-actions{display:flex;gap:10px;margin-top:16px}
+  .zoom-actions .btn{flex:1;padding:14px;border-radius:12px;border:1px solid #334155;background:#1f2937;color:#e5e7eb;cursor:pointer}
+  .zoom-actions .btn.primary{background:#4f46e5;border-color:#4f46e5}
 </style>
 </head>
 <body>
 <header>
   <h1>自動車ローン シミュレーション</h1>
-  <p>残価設定ローン・ボーナス併用・繰上返済に対応</p>
+  <p>残価設定ローン・ボーナス併用・繰上返済に対応（年配者向け拡大入力＋カンマ付き）</p>
 </header>
 
 <main>
   <section class="panel" aria-label="入力フォーム">
     <div class="grid">
-      <div><label for="price">車両価格（円）</label><input id="price" type="number" value="3000000"></div>
-      <div><label for="down">頭金（円）</label><input id="down" type="number" value="500000"></div>
-      <div><label for="rate">年利（%）</label><input id="rate" type="number" value="3.0" step="0.01"></div>
-      <div><label for="years">返済年数（年）</label><input id="years" type="number" value="5" step="0.5"></div>
-      <div><label for="balloonPct">残価率（%）</label><input id="balloonPct" type="number" value="0"></div>
-      <div><label for="balloonAmt">残価額（円）</label><input id="balloonAmt" type="number" value="0"></div>
-      <div><label for="bonusAmt">ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0"></div>
-      <div><label for="bonusTimes">ボーナス回数（年）</label><input id="bonusTimes" type="number" value="2"></div>
-      <div><label for="extra">毎月の繰上返済額（円）</label><input id="extra" type="number" value="0"></div>
-      <div><label for="fees">初期手数料（円）</label><input id="fees" type="number" value="0"></div>
+      <div><label for="price">車両価格（円）</label><input id="price" type="number" value="3000000" min="0" inputmode="numeric"></div>
+      <div><label for="down">頭金（円）</label><input id="down" type="number" value="500000" min="0" inputmode="numeric"></div>
+      <div><label for="rate">年利（%）</label><input id="rate" type="number" value="3.0" step="0.01" min="0" max="20" inputmode="decimal"></div>
+      <div><label for="years">返済年数（年）</label><input id="years" type="number" value="5" step="1" min="1" max="10" inputmode="numeric"></div>
+      <div><label for="balloonPct">残価率（%）</label><input id="balloonPct" type="number" value="0" min="0" max="30" inputmode="numeric"></div>
+      <div><label for="balloonAmt">残価額（円）</label><input id="balloonAmt" type="number" value="0" min="0" inputmode="numeric"></div>
+      <div><label for="bonusAmt">ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0" min="0" inputmode="numeric"></div>
+      <div><label for="bonusTimes">ボーナス回数（年）</label><input id="bonusTimes" type="number" value="2" min="0" max="4" inputmode="numeric"></div>
+      <div><label for="extra">毎月の繰上返済額（円）</label><input id="extra" type="number" value="0" min="0" inputmode="numeric"></div>
+      <div><label for="fees">初期手数料（円）</label><input id="fees" type="number" value="0" min="0" inputmode="numeric"></div>
     </div>
+
     <div class="row" style="margin-top:16px">
       <button id="calc" class="btn primary">計算する</button>
       <button id="download" class="btn" disabled>CSVダウンロード</button>
     </div>
+
+    <div id="errors" style="margin-top:8px;color:#fecaca;background:#7f1d1d;padding:8px 10px;border-radius:8px;display:none"></div>
+
     <div class="summary">
       <div class="card"><h3>借入額</h3><div id="loan" class="val">-</div></div>
       <div class="card"><h3>毎月返済額</h3><div id="monthly" class="val">-</div></div>
       <div class="card"><h3>総支払額</h3><div id="total" class="val">-</div></div>
       <div class="card"><h3>利息総額</h3><div id="interest" class="val">-</div></div>
     </div>
-
-<div class="zoom-keys">
-  <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
-  <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
-  <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
-  <button data-k="00">00</button><button data-k="0">0</button><button data-k=",">,</button>
-  <button data-k="←">⌫</button>
-</div>
-
   </section>
 
   <section class="panel" style="margin-top:16px">
@@ -141,148 +116,18 @@
 
 <footer><small>© 2025 Auto Loan Simulator</small></footer>
 
-<script>
-(function(){
-  const fmt = new Intl.NumberFormat('ja-JP',{maximumFractionDigits:0});
-  const fmtYen = v => (isFinite(v)? fmt.format(Math.round(v)) : "-");
-  const $ = id => document.getElementById(id);
-
-  function compute(){
-    const price=+$("price").value||0, down=+$("down").value||0, rate=+$("rate").value||0, years=+$("years").value||0;
-    const balloonPct=+$("balloonPct").value||0, balloonAmt=+$("balloonAmt").value||0, bonusAmt=+$("bonusAmt").value||0, bonusTimes=+$("bonusTimes").value||0;
-    const extra=+$("extra").value||0, fees=+$("fees").value||0;
-    const loan=Math.max(0,price-down), months=Math.round(years*12), r=rate/100/12;
-    const residual=balloonAmt>0?Math.min(loan,balloonAmt):loan*(balloonPct/100);
-    const financed=Math.max(0,loan-residual);
-    let monthly;
-    if(r===0){monthly=financed/months;}else{const pow=Math.pow(1+r,months);monthly=financed*(r*pow)/(pow-1);}
-    const tbody=$("table").querySelector("tbody"); tbody.innerHTML="";
-    let bal=financed, totalPay=0,totalInt=0; const interval=(bonusTimes>0&&bonusTimes<=12)?Math.max(1,Math.round(12/bonusTimes)):0;
-    for(let i=1;i<=months;i++){
-      const interest=r===0?0:bal*r;
-      let principal=Math.min(bal,monthly-interest), prepay=Math.min(extra,Math.max(0,bal-principal));
-      let bonus=0; if(interval&&bonusAmt>0&&(i%interval)===0){bonus=Math.min(bonusAmt,Math.max(0,bal-principal-prepay));}
-      if(i===months){principal=bal-prepay-bonus; monthly=principal+interest;}
-      bal-=(principal+prepay+bonus); totalPay+=(monthly+prepay+bonus); totalInt+=interest;
-      const tr=document.createElement("tr"); [i,`${i}ヶ月目`,fmtYen(monthly+prepay+bonus),fmtYen(interest),fmtYen(principal),fmtYen(prepay),fmtYen(bonus),fmtYen(Math.max(0,bal))].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)}); tbody.appendChild(tr);
-    }
-    if(residual>0){const tr=document.createElement("tr");["満期","",fmtYen(residual),"—","—","—","—",fmtYen(0)].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});tbody.appendChild(tr); totalPay+=residual;}
-    $("loan").textContent=fmtYen(loan); $("monthly").textContent=fmtYen(monthly+(extra||0)); $("total").textContent=fmtYen(totalPay+fees); $("interest").textContent=fmtYen(totalInt);
-    const rows=[["#","年月","返済額","うち利息","うち元金","繰上返済","ボーナス","残高"],...tbody.querySelectorAll("tr")].map(tr=>[...tr.children].map(td=>td.textContent.replace(/,/g,"")));
-    const csvText=rows.map(r=>r.join(",")).join("\n"); const blob=new Blob([csvText],{type:"text/csv;charset=utf-8"}); const url=URL.createObjectURL(blob);
-    $("download").disabled=false; $("download").onclick=()=>{const a=document.createElement("a");a.href=url;a.download="car_loan.csv";a.click();}
-  }
-  $("calc").addEventListener("click",compute); compute();
-})();
-
-    // ① 右クリックのメニューを無効化
-  window.addEventListener('contextmenu', (e) => e.preventDefault(), {passive:false});
-
-  // ② 中クリック（ホイール押し）や他ボタンでのクリック反応を無効化
-  //    ※ 左クリック(0)以外は基本すべて無視
-  window.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) { e.preventDefault(); }
-  }, {capture:true});
-
-  // 中クリックで新しいタブが開くのを防止
-  window.addEventListener('auxclick', (e) => e.preventDefault(), {capture:true});
-
-  // ③ マウスの戻る/進むボタンによる履歴遷移を無効化
-  //    （ブラウザのBack/Forwardを押したときも同様にブロック）
-  history.pushState(null, '', location.href);
-  window.addEventListener('popstate', () => {
-    history.pushState(null, '', location.href);
-  });
-
-  // ④ 数値入力がホイールで勝手に変わるのを防止
-  function blockWheelOnNumberInputs(scope=document) {
-    scope.querySelectorAll('input[type="number"]').forEach((el) => {
-      el.addEventListener('wheel', (e) => {
-        // フォーカス中でもホイール変更を無効化
-        e.preventDefault();
-      }, {passive:false});
-    });
-  }
-  blockWheelOnNumberInputs();
-  // 動的に追加される場合に備えて
-  const mo = new MutationObserver(() => blockWheelOnNumberInputs());
-  mo.observe(document.documentElement, {childList:true, subtree:true});
-
-  // ⑤ テキストの誤選択が気になる場合：全体を選択不可（入力欄は除外）
-  document.addEventListener('selectstart', (e) => {
-    const t = e.target;
-    if (!(t instanceof HTMLInputElement) && !(t instanceof HTMLTextAreaElement) && !(t.isContentEditable)) {
-      e.preventDefault();
-    }
-  });
-</script>
-
-  <style>
-  .pop-number {
-    position: absolute;
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: #2563eb;
-    animation: popUp 1s ease-out forwards;
-    pointer-events: none;
-    z-index: 9999;
-  }
-
-  @keyframes popUp {
-    0%   { transform: translateY(0) scale(1); opacity: 1; }
-    50%  { transform: translateY(-30px) scale(1.4); opacity: 0.9; }
-    100% { transform: translateY(-60px) scale(0.8); opacity: 0; }
-  }
-</style>
-
-<style>
-  /* ====== 大きく飛び出す数値入力パッド ====== */
-  #zoom-scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);
-    backdrop-filter:saturate(120%) blur(2px);display:none;align-items:center;justify-content:center;z-index:9999}
-  #zoom-scrim.show{display:flex}
-  .zoom-card{width:min(92vw,560px);background:#0b1220;border:1px solid #334155;border-radius:16px;
-    box-shadow:0 40px 120px rgba(0,0,0,.5);transform-origin:center;
-    animation:zoomIn .18s ease-out; }
-  @keyframes zoomIn{
-    from{transform:perspective(1000px) translateY(24px) scale(.92) rotateX(6deg);opacity:0}
-    to{transform:perspective(1000px) translateY(0) scale(1) rotateX(0);opacity:1}
-  }
-  .zoom-head{padding:16px 20px;font-size:14px;color:#93c5fd;border-bottom:1px solid #1f2937}
-  .zoom-body{padding:16px 20px}
-  .zoom-input{width:100%;font-size:clamp(36px,6vw,56px);line-height:1.2;padding:16px 18px;border-radius:14px;
-    border:1px solid #475569;background:#0f172a;color:#e5e7eb;text-align:right;font-variant-numeric:tabular-nums}
-  .zoom-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
-  .zoom-keys button{padding:18px 0;font-size:22px;border-radius:12px;border:1px solid #334155;background:#111827;color:#e5e7eb;cursor:pointer}
-  .zoom-actions{display:flex;gap:10px;margin-top:16px}
-  .zoom-actions .btn{flex:1;padding:14px;border-radius:12px;border:1px solid #334155;background:#1f2937;color:#e5e7eb;cursor:pointer}
-  .zoom-actions .btn.primary{background:#4f46e5;border-color:#4f46e5}
-</style>
-
+<!-- 拡大入力パッド -->
 <div id="zoom-scrim" aria-hidden="true">
   <div class="zoom-card" role="dialog" aria-modal="true" aria-label="拡大入力">
     <div class="zoom-head">大きな数値入力</div>
     <div class="zoom-body">
-      <input id="zoomValue" class="zoom-input" type="text" inputmode="numeric" aria-label="数値">
-      scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
-  b.addEventListener("click", ()=>{
-    const k=b.dataset.k;
-    if(k==="←"){
-      const raw = unformat(zInput.value);
-      zInput.value = withCommas(raw.slice(0,-1));
-      return;
-    }
-    if(k===","){
-      // カンマキーは「見た目だけ」→ 何もしなくてもOK
-      // ここでは即座に再整形をかけるだけ
-      const raw = unformat(zInput.value);
-      zInput.value = withCommas(raw);
-      return;
-    }
-    const raw = unformat(zInput.value) + (k==="00" ? "00" : k);
-    zInput.value = withCommas(raw);
-  });
-});
-
+      <input id="zoomValue" class="zoom-input" type="text" inputmode="numeric" aria-label="数値（カンマ表示）">
+      <div class="zoom-keys">
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k=",">,</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="00">00</button>
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="0">0</button>
+        <button data-k="←">⌫</button>
+      </div>
       <div class="zoom-actions">
         <button id="zoomCancel" class="btn">キャンセル</button>
         <button id="zoomOk" class="btn primary">決定</button>
@@ -293,97 +138,137 @@
 
 <script>
 (function(){
-  const $ = (id)=>document.getElementById(id);
+  const fmt = new Intl.NumberFormat('ja-JP',{maximumFractionDigits:0});
+  const fmtYen = v => (isFinite(v)? fmt.format(Math.round(v)) : "-");
+  const $ = id => document.getElementById(id);
+
+  // ======= 入力制限とバリデーション =======
+  const limits = { balloonPct:30, years:10, bonusTimes:4 };
+  const ids = ["price","down","rate","years","balloonPct","balloonAmt","bonusAmt","bonusTimes","extra","fees"];
+  const err = $("errors");
+  function showError(m){ err.textContent=m; err.style.display="block"; }
+  function clearError(){ err.style.display="none"; }
+  function clampById(id,val){
+    if(id in limits){ return Math.min(+val||0, limits[id]); }
+    return +val||0;
+  }
+
+  // 自動保存/復元
+  const KEY="car-loan-form-v1";
+  function save(){ localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(ids.map(i=>[i,$(i).value])))); }
+  function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)||"null"); if(d){ ids.forEach(i=>{ if(d[i]!=null) $(i).value=d[i]; }); } }catch{} }
+  window.addEventListener("load", load);
+  ids.forEach(i=>$(i).addEventListener("change", save));
+
+  // ======= 計算 =======
+  function compute(){
+    clearError();
+    // 値取り込み＆上限クランプ
+    const price = clampById("price", $("price").value);
+    const down  = clampById("down", $("down").value);
+    const rate  = Math.min(Math.max(+$("rate").value||0,0),20);
+    const years = clampById("years", $("years").value);
+    const balloonPct = clampById("balloonPct", $("balloonPct").value);
+    const balloonAmt = clampById("balloonAmt", $("balloonAmt").value);
+    const bonusAmt   = clampById("bonusAmt", $("bonusAmt").value);
+    const bonusTimes = clampById("bonusTimes", $("bonusTimes").value);
+    const extra = clampById("extra", $("extra").value);
+    const fees  = clampById("fees", $("fees").value);
+
+    if(price<=0) return showError("車両価格は1円以上を入力してください。");
+    if(down<0 || down>price) return showError("頭金は0〜車両価格の範囲にしてください。");
+
+    const loan = Math.max(0, price - down);
+    const months = Math.round(years*12);
+    const r = rate/100/12;
+
+    const residual = balloonAmt>0 ? Math.min(loan,balloonAmt) : loan*(balloonPct/100);
+    const financed = Math.max(0, loan - residual);
+
+    let monthly;
+    if(r===0){ monthly = financed/months; }
+    else{ const pow=Math.pow(1+r,months); monthly = financed*(r*pow)/(pow-1); }
+
+    const tbody = $("table").querySelector("tbody"); tbody.innerHTML="";
+    let bal=financed,totalPay=0,totalInt=0;
+    const interval = (bonusTimes>0 && bonusTimes<=4)? Math.max(1, Math.round(12/bonusTimes)) : 0;
+
+    for(let i=1;i<=months;i++){
+      const interest = r===0?0:bal*r;
+      let principal = Math.min(bal, monthly - interest);
+      let prepay = Math.min(extra, Math.max(0, bal - principal));
+      let bonus = 0;
+      if(interval && bonusAmt>0 && (i%interval)===0){
+        bonus = Math.min(bonusAmt, Math.max(0, bal - principal - prepay));
+      }
+      if(i===months){ // 最終月：端数調整
+        principal = bal - prepay - bonus;
+        monthly = principal + interest;
+      }
+      bal -= (principal + prepay + bonus);
+      totalPay += (monthly + prepay + bonus);
+      totalInt += interest;
+
+      const tr=document.createElement("tr");
+      [i, `${i}ヶ月目`, fmtYen(monthly+prepay+bonus), fmtYen(interest), fmtYen(principal), fmtYen(prepay), fmtYen(bonus), fmtYen(Math.max(0,bal))]
+      .forEach(v=>{ const td=document.createElement("td"); td.textContent=v; tr.appendChild(td); });
+      tbody.appendChild(tr);
+    }
+
+    if(residual>0){
+      const tr=document.createElement("tr");
+      ["満期","", fmtYen(residual),"—","—","—","—", fmtYen(0)]
+      .forEach(v=>{ const td=document.createElement("td"); td.textContent=v; tr.appendChild(td); });
+      tbody.appendChild(tr);
+      totalPay += residual;
+    }
+
+    $("loan").textContent = fmtYen(loan);
+    $("monthly").textContent = fmtYen(monthly + (extra||0));
+    $("total").textContent = fmtYen(totalPay + fees);
+    $("interest").textContent = fmtYen(totalInt);
+
+    // CSV
+    const rows=[["#","年月","返済額","うち利息","うち元金","繰上返済","ボーナス","残高"]];
+    tbody.querySelectorAll("tr").forEach(tr=>{
+      rows.push([...tr.children].map(td=>td.textContent.replace(/,/g,"")));
+    });
+    const csvText=rows.map(r=>r.join(",")).join("\n");
+    const url=URL.createObjectURL(new Blob([csvText],{type:"text/csv;charset=utf-8"}));
+    $("download").disabled=false; $("download").onclick=()=>{const a=document.createElement("a");a.href=url;a.download="car_loan.csv";a.click();}
+
+    save();
+  }
+  $("calc").addEventListener("click", compute);
+  compute(); // 初回
+
+  // ======= マウス系の誤操作防止 =======
+  window.addEventListener('contextmenu', e=>e.preventDefault(), {passive:false});            // 右クリック無効
+  window.addEventListener('mousedown', e=>{ if(e.button!==0) e.preventDefault(); }, {capture:true}); // 左以外無効
+  window.addEventListener('auxclick', e=>e.preventDefault(), {capture:true});               // 中クリック新規タブ抑止
+  history.pushState(null,'',location.href); window.addEventListener('popstate',()=>history.pushState(null,'',location.href)); // 戻る進む無効
+  // 数値入力のホイール増減を抑止
+  document.querySelectorAll('input[type="number"]').forEach(el=>{
+    el.addEventListener('wheel', e=>e.preventDefault(), {passive:false});
+  });
+
+  // ======= 拡大入力パッド（カンマ表示＋カンマキー付き） =======
   const scrim = $("zoom-scrim");
   const zInput = $("zoomValue");
   let src = null;
 
-  // すべての数値入力を対象に（モバイルで数字キーボードを出す）
-  document.querySelectorAll('input[type="number"]').forEach(inp=>{
-    inp.setAttribute("inputmode","numeric");
-    // フォーカス/クリックで拡大パッドを開く
-    function open(){
-      src = inp;
-      zInput.value = inp.value || "";
-      scrim.classList.add("show");
-      document.body.style.overflow = "hidden";
-      setTimeout(()=>{ zInput.focus(); zInput.select(); }, 0);
-    }
-    inp.addEventListener("focus", (e)=>{ e.preventDefault(); inp.blur(); open(); }, {passive:false});
-    inp.addEventListener("click", (e)=>{ e.preventDefault(); inp.blur(); open(); }, {passive:false});
-  });
-
-  // パッドのキー入力
-  scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
-  b.addEventListener("click", ()=>{
-    const k=b.dataset.k;
-    if(k==="←"){
-      const raw = unformat(zInput.value);
-      zInput.value = withCommas(raw.slice(0,-1));
-      return;
-    }
-    if(k===","){
-      // カンマキーは「見た目だけ」→ 何もしなくてもOK
-      // ここでは即座に再整形をかけるだけ
-      const raw = unformat(zInput.value);
-      zInput.value = withCommas(raw);
-      return;
-    }
-    const raw = unformat(zInput.value) + (k==="00" ? "00" : k);
-    zInput.value = withCommas(raw);
-  });
-});
-
-
-  // 決定・キャンセル
-  $("zoomOk").addEventListener("click", ()=>close(true));
-  $("zoomCancel").addEventListener("click", ()=>close(false));
-  scrim.addEventListener("click", (e)=>{ if(e.target===scrim) close(false); });
-  document.addEventListener("keydown", (e)=>{
-    if(!scrim.classList.contains("show")) return;
-    if(e.key==="Escape") close(false);
-    if(e.key==="Enter") close(true);
-  });
-
-  function close(commit){
-    if(commit && src){
-      const v = zInput.value.replace(/[^\d.-]/g,"");
-      src.value = v || "0";
-      // 既存ロジックを動かすためにイベント発火
-      src.dispatchEvent(new Event("input",{bubbles:true}));
-      src.dispatchEvent(new Event("change",{bubbles:true}));
-    }
-    scrim.classList.remove("show");
-    document.body.style.overflow = "";
-    src = null;
-  }
-})();
-</script>
-
-  
-<script>
-(function(){
-  // --- 追加：カンマ整形ヘルパー ---
-  const unformat = s => (s||"").toString().replace(/[^\d\-]/g,"");           // 数字とマイナス以外除去
+  const unformat = s => (s||"").toString().replace(/[^\d\-]/g,"");
   const withCommas = s => {
     if(!s) return "";
     const neg = s.startsWith("-") ? "-" : "";
-    s = s.replace(/^-/, "");                         // 符号は一旦外す
+    s = s.replace(/^-/, "");
     return neg + s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
-  const scrim = document.getElementById("zoom-scrim");
-  const zInput = document.getElementById("zoomValue");
-  const okBtn  = document.getElementById("zoomOk");
-  const cancelBtn = document.getElementById("zoomCancel");
-  let src = null;
-
-  // 既存：数値欄を拡大パッド起動対象に
   document.querySelectorAll('input[type="number"]').forEach(inp=>{
     inp.setAttribute("inputmode","numeric");
     function open(){
       src = inp;
-      // 起動時点で元値をカンマ付きで表示
       zInput.value = withCommas(unformat(inp.value||""));
       scrim.classList.add("show");
       document.body.style.overflow = "hidden";
@@ -393,59 +278,53 @@
     inp.addEventListener("click",(e)=>{ e.preventDefault(); inp.blur(); open(); }, {passive:false});
   });
 
-  // 既存：キー（0-9/00/⌫）
-scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
-  b.addEventListener("click", ()=>{
-    const k=b.dataset.k;
-    if(k==="←"){
-      const raw = unformat(zInput.value);
-      zInput.value = withCommas(raw.slice(0,-1));
-      return;
-    }
-    if(k===","){
-      // カンマキーは「見た目だけ」→ 何もしなくてもOK
-      // ここでは即座に再整形をかけるだけ
-      const raw = unformat(zInput.value);
+  scrim.querySelectorAll(".zoom-keys button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const k=b.dataset.k;
+      if(k==="←"){
+        const raw = unformat(zInput.value);
+        zInput.value = withCommas(raw.slice(0,-1));
+        return;
+      }
+      if(k===","){ // カンマキー：再整形のみ（視覚的一貫性）
+        const raw = unformat(zInput.value);
+        zInput.value = withCommas(raw);
+        return;
+      }
+      const raw = unformat(zInput.value) + (k==="00" ? "00" : k);
       zInput.value = withCommas(raw);
-      return;
-    }
-    const raw = unformat(zInput.value) + (k==="00" ? "00" : k);
-    zInput.value = withCommas(raw);
+    });
   });
-});
 
-
-  // 追加：直接キーボード入力でも即カンマ整形
   zInput.addEventListener("input", ()=>{
-    const caretToEnd = document.activeElement === zInput; // ざっくり末尾に揃える
     const raw = unformat(zInput.value);
     zInput.value = withCommas(raw);
-    if(caretToEnd) zInput.selectionStart = zInput.selectionEnd = zInput.value.length;
-  });
-
-  // 決定・キャンセル
-  okBtn.addEventListener("click", ()=>close(true));
-  cancelBtn.addEventListener("click", ()=>close(false));
-  scrim.addEventListener("click", (e)=>{ if(e.target===scrim) close(false); });
-  document.addEventListener("keydown", (e)=>{
-    if(!scrim.classList.contains("show")) return;
-    if(e.key==="Escape") close(false);
-    if(e.key==="Enter") close(true);
+    zInput.selectionStart = zInput.selectionEnd = zInput.value.length;
   });
 
   function close(commit){
     if(commit && src){
-      const numeric = unformat(zInput.value) || "0";
-      src.value = numeric;  // ← 元のinput[type=number]へはカンマ無しの数値を渡す
+      let numeric = parseInt(unformat(zInput.value)||"0",10);
+      // 上限クランプ（指定項目のみ）
+      const id = src.id;
+      if(id in limits) numeric = Math.min(numeric, limits[id]);
+      src.value = isFinite(numeric)? numeric : 0;
       src.dispatchEvent(new Event("input",{bubbles:true}));
       src.dispatchEvent(new Event("change",{bubbles:true}));
     }
     scrim.classList.remove("show");
     document.body.style.overflow = "";
-    src = null;
+    src=null;
   }
+  $("zoomOk").addEventListener("click", ()=>close(true));
+  $("zoomCancel").addEventListener("click", ()=>close(false));
+  scrim.addEventListener("click", e=>{ if(e.target===scrim) close(false); });
+  document.addEventListener("keydown", e=>{
+    if(!scrim.classList.contains("show")) return;
+    if(e.key==="Escape") close(false);
+    if(e.key==="Enter") close(true);
+  });
 })();
 </script>
-
 </body>
 </html>
