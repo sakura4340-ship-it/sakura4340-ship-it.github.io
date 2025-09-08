@@ -3,20 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>自動車ローン シミュレーション</title>
+<title>自動車ローン シミュレーター</title>
 <meta name="theme-color" content="#0f172a">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 
 <style>
   body{margin:0;background:#0f172a;color:#e5e7eb;font-family:sans-serif;-webkit-user-select:none;user-select:none}
-  input,textarea{-webkit-user-select:text;user-select:text}
+  input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1220;color:#fff}
+  label{font-size:12px;color:#93c5fd}
   header{padding:16px;text-align:center;background:#111827}
   main{max-width:1100px;margin:auto;padding:16px}
   .panel{background:#111827;border:1px solid #1f2937;padding:16px;border-radius:12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-  label{font-size:12px;color:#93c5fd}
-  input{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1220;color:#fff}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
   .btn{padding:10px 16px;border-radius:8px;border:1px solid #334155;background:#1f2937;color:#fff;cursor:pointer}
   .btn.primary{background:#4f46e5;border-color:#4f46e5}
   .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:16px}
@@ -26,15 +25,10 @@
   table{width:100%;border-collapse:collapse;margin-top:16px}
   th,td{padding:8px;border-bottom:1px solid #1f2937;text-align:right}
   th{background:#0b1220;color:#93c5fd;position:sticky;top:0}
-  /* ===== 拡大入力パッド ===== */
-  #zoom-scrim{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:9999}
-  #zoom-scrim.show{display:flex}
-  .zoom-card{background:#0b1220;border:1px solid #334155;border-radius:12px;padding:16px;width:min(90vw,500px)}
-  .zoom-input{width:100%;font-size:40px;text-align:right;padding:12px;background:#111827;color:#fff;border:1px solid #475569;border-radius:8px}
-  .zoom-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
-  .zoom-keys button{padding:14px 0;font-size:20px;border-radius:8px;border:1px solid #334155;background:#1f2937;color:#fff}
-  .zoom-actions{display:flex;gap:8px;margin-top:12px}
-  .zoom-actions .btn{flex:1}
+  /* スピンボタン削除 */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input[type=number]{-moz-appearance:textfield}
 </style>
 </head>
 <body>
@@ -45,14 +39,19 @@
       <div><label>車両価格</label><input id="price" type="number" value="3000000"></div>
       <div><label>頭金</label><input id="down" type="number" value="500000"></div>
       <div><label>年利(%)</label><input id="rate" type="number" value="3.0" step="0.01" max="30"></div>
-      <div><label>返済年数</label><input id="years" type="number" value="5" max="10"></div>
+      <div>
+        <label>支払回数（ヶ月）</label>
+        <select id="months"></select>
+      </div>
       <div><label>残価率(%)</label><input id="balloonPct" type="number" value="0" max="30"></div>
       <div><label>残価額</label><input id="balloonAmt" type="number" value="0"></div>
       <div><label>ボーナス加算額</label><input id="bonusAmt" type="number" value="0"></div>
       <div><label>ボーナス回数/年</label><input id="bonusTimes" type="number" value="2" max="4"></div>
     </div>
-    <div style="margin-top:12px"><button id="calc" class="btn primary">計算する</button> <button id="download" class="btn">CSV</button></div>
-    <div id="errors" style="color:#fecaca;margin-top:8px"></div>
+    <div style="margin-top:12px">
+      <button id="calc" class="btn primary">計算する</button>
+      <button id="download" class="btn">CSV</button>
+    </div>
     <div class="summary">
       <div class="card"><h3>借入額</h3><div id="loan" class="val">-</div></div>
       <div class="card"><h3>毎月返済</h3><div id="monthly" class="val">-</div></div>
@@ -63,52 +62,42 @@
   <section class="panel"><div style="max-height:50vh;overflow:auto"><table><thead><tr><th>#</th><th>返済額</th><th>利息</th><th>元金</th><th>残高</th></tr></thead><tbody id="tbody"></tbody></table></div></section>
 </main>
 
-<!-- 拡大入力パッド -->
-<div id="zoom-scrim">
-  <div class="zoom-card">
-    <input id="zoomValue" class="zoom-input" type="text">
-    <div class="zoom-keys">
-      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button data-k="," id="key-comma">,</button>
-      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="00" id="key-00">00</button>
-      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="0">0</button>
-      <button data-k="." id="key-dot">.</button><button data-k="←">⌫</button>
-    </div>
-    <div class="zoom-actions"><button id="zoomCancel" class="btn">キャンセル</button><button id="zoomOk" class="btn primary">決定</button></div>
-  </div>
-</div>
-
 <script>
-const fmt = new Intl.NumberFormat("ja-JP");
-const unformatInt = s => (s||"").replace(/[^\d]/g,"");
-const withCommas = s => s? s.replace(/\B(?=(\d{3})+(?!\d))/g,","):"";
-const cleanDecimal = s=>{
-  s=(s||"").replace(/[^\d.]/g,"");
-  const i=s.indexOf(".");
-  if(i!==-1) s=s.slice(0,i+1)+s.slice(i+1).replace(/\./g,"");
-  return s;
-};
-const limits={rate:30,balloonPct:30,years:10,bonusTimes:4};
-const ids=["price","down","rate","years","balloonPct","balloonAmt","bonusAmt","bonusTimes"];
+const fmt=new Intl.NumberFormat("ja-JP");
 const $=id=>document.getElementById(id);
+
+// 支払回数(1〜120)を生成
+const sel=$("months");
+for(let i=1;i<=120;i++){
+  const opt=document.createElement("option");
+  opt.value=i;opt.textContent=i;
+  if(i===60) opt.selected=true; // デフォルト60ヶ月
+  sel.appendChild(opt);
+}
+
+// フォーカスで青反転
+document.querySelectorAll("input[type=number]").forEach(inp=>{
+  inp.addEventListener("focus",()=>inp.select());
+  inp.addEventListener("mousedown",e=>{e.preventDefault();inp.select();});
+});
 
 function compute(){
   const price=+($("price").value||0);
   const down=+($("down").value||0);
   let rate=Math.min(+($("rate").value||0),30);
-  const years=Math.min(+($("years").value||0),10);
+  const months=Math.min(+($("months").value||0),120);
   const balloonPct=Math.min(+($("balloonPct").value||0),30);
   const balloonAmt=+($("balloonAmt").value||0);
   const bonusAmt=+($("bonusAmt").value||0);
   const bonusTimes=Math.min(+($("bonusTimes").value||0),4);
   const loan=Math.max(price-down,0);
-  const months=years*12;
   const r=rate/100/12;
   const residual=balloonAmt>0?Math.min(loan,balloonAmt):loan*(balloonPct/100);
   const financed=loan-residual;
   let monthly;
   if(r===0) monthly=financed/months;
   else{const pow=Math.pow(1+r,months);monthly=financed*(r*pow)/(pow-1);}
-  let bal=financed, totalPay=0, totalInt=0;
+  let bal=financed,totalPay=0,totalInt=0;
   const tb=$("tbody");tb.innerHTML="";
   for(let i=1;i<=months;i++){
     const interest=bal*r;
@@ -119,7 +108,7 @@ function compute(){
     tr.innerHTML=`<td>${i}</td><td>${fmt.format(monthly)}</td><td>${fmt.format(interest)}</td><td>${fmt.format(principal)}</td><td>${fmt.format(Math.max(bal,0))}</td>`;
     tb.appendChild(tr);
   }
-  if(residual>0){totalPay+=residual;}
+  if(residual>0) totalPay+=residual;
   $("loan").textContent=fmt.format(loan);
   $("monthly").textContent=fmt.format(monthly);
   $("total").textContent=fmt.format(totalPay);
@@ -127,43 +116,6 @@ function compute(){
 }
 $("calc").onclick=compute;
 compute();
-
-// === 拡大パッド ===
-const scrim=$("zoom-scrim"),zInput=$("zoomValue"),keyComma=$("key-comma"),keyDot=$("key-dot"),key00=$("key-00");let src=null,isRate=false;
-document.querySelectorAll("input[type=number]").forEach(inp=>{
-  inp.addEventListener("click",e=>{e.preventDefault();open(inp);});
-  inp.addEventListener("focus",e=>{e.preventDefault();open(inp);});
-});
-function open(inp){
-  src=inp;isRate=(inp.id==="rate");
-  keyDot.style.display=isRate?"block":"none";
-  keyComma.style.display=isRate?"none":"block";
-  key00.style.display=isRate?"none":"block";
-  zInput.value=isRate?cleanDecimal(inp.value):withCommas(unformatInt(inp.value));
-  scrim.classList.add("show");
-}
-document.querySelectorAll(".zoom-keys button").forEach(b=>b.onclick=()=>{
-  const k=b.dataset.k;
-  if(k==="←"){zInput.value=isRate?zInput.value.slice(0,-1):withCommas(unformatInt(zInput.value).slice(0,-1));return;}
-  if(isRate){
-    if(k==="."){if(!zInput.value.includes("."))zInput.value+=k;return;}
-    if(k===","||k==="00")return;
-    zInput.value=cleanDecimal(zInput.value+k);
-  }else{
-    if(k===","){zInput.value=withCommas(unformatInt(zInput.value));return;}
-    zInput.value=withCommas(unformatInt(zInput.value)+(k==="00"?"00":k));
-  }
-});
-$("zoomOk").onclick=()=>close(true);
-$("zoomCancel").onclick=()=>close(false);
-function close(commit){
-  if(commit&&src){
-    let v=isRate?parseFloat(cleanDecimal(zInput.value))||0:parseInt(unformatInt(zInput.value)||"0",10);
-    if(src.id in limits&&v>limits[src.id])v=limits[src.id];
-    src.value=v;compute();
-  }
-  scrim.classList.remove("show");src=null;
-}
 </script>
 </body>
 </html>
