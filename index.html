@@ -370,43 +370,169 @@ function compute(){
   dl.onclick=()=>{ const a=document.createElement("a"); a.href=url; a.download="car_loan_schedule.csv"; a.click(); };
 
   // PDF
-  const pdfBtn = $("pdf"); pdfBtn.disabled=false;
-  pdfBtn.onclick=()=>{
-    const { jsPDF } = window.jspdf; const doc = new jsPDF();
-    doc.setFontSize(16); doc.text("自動車ローン シミュレーター 結果", 14, 18);
-    doc.setFontSize(11);
-    const s = [
-      `車両価格: ${fmt.format(+($("price").value||0))} 円`,
-      `支払い総額: ${fmt.format(+($("totalCost").value||0))} 円`,
-      `頭金: ${fmt.format(+($("down").value||0))} 円`,
-      `ローン金額: ${$("loan").textContent} 円`,
-      `年利: ${+$("rate").value||0}%`,
-      `回数: ${+$("months").value||0} ヶ月`,
-      `残価率/額: ${+$("balloonPct").value||0}% / ${fmt.format(+($("balloonAmt").value||0))} 円（有効残価: ${fmt.format(effectiveResidual)} 円）`,
-      `ボーナス: 年${+$("bonusTimes").value||0}回 / モード:${document.querySelector('input[name="bonusMode"]:checked')?.value==="add"?"加算額":"総額"}`
-    ];
-    s.forEach((t,i)=>doc.text(t,14, 30+i*6));
-    doc.setFontSize(12);
-    doc.text(`毎月返済（通常月）: ${$("monthly").textContent} 円`, 14, 30 + s.length*6 + 8);
-    doc.text(`総支払額（残価含む）: ${$("total").textContent} 円`, 14, 30 + s.length*6 + 16);
-    doc.text(`利息総額: ${$("interest").textContent} 円`, 14, 30 + s.length*6 + 24);
+<script>
+(function(){
+  const fmt = new Intl.NumberFormat("ja-JP");
+  const $  = id => document.getElementById(id);
 
-    // テーブル（簡易）
-    let y = 30 + s.length*6 + 36;
-    doc.setFontSize(11); doc.text("返済スケジュール", 14, y); y+=6;
-    document.querySelectorAll("#tbody tr").forEach(tr=>{
-      const cols=[...tr.children].map(td=>td.textContent);
-      doc.text(cols.join("   "), 14, y);
-      y+=6; if(y>280){ doc.addPage(); y=20; }
+  // 既存compute()の最後でPDFボタンを有効化済みならOK
+  // なっていなければ、適宜 enable してください
+  const pdfBtn = $("pdf");
+  if(!pdfBtn) return;
+
+  pdfBtn.onclick = async () => {
+    // 1) PDFテンプレートへデータ流し込み
+    $("pdfDate").textContent = new Date().toLocaleString();
+    $("pdfLoan").textContent = $("loan").textContent + " 円";
+    $("pdfMonthly").textContent = $("monthly").textContent + " 円";
+    $("pdfTotal").textContent = $("total").textContent + " 円";
+    $("pdfInterest").textContent = $("interest").textContent + " 円";
+
+    // 入力条件
+    const inputsEl = $("pdfInputs");
+    inputsEl.innerHTML = [
+      `車両価格：${fmt.format(+($("price")?.value||0))} 円`,
+      `支払い総額：${fmt.format(+($("totalCost")?.value||0))} 円`,
+      `頭金：${fmt.format(+($("down")?.value||0))} 円`,
+      `ローン金額：${$("loan").textContent} 円`,
+      `年利：${+($("rate")?.value||0)} %`,
+      `回数：${+($("months")?.value||0)} ヶ月`,
+      `残価率：${+($("balloonPct")?.value||0)} %`,
+      `残価額：${fmt.format(+($("balloonAmt")?.value||0))} 円`,
+      `ボーナス年回数：${+($("bonusTimes")?.value||0)} 回`,
+      `ボーナス方式：${document.querySelector('input[name="bonusMode"]:checked')?.value==="add"?"加算額":"総額"}`,
+      `加算額：${fmt.format(+($("bonusAmt")?.value||0))} 円`,
+      `ボーナス月総額：${fmt.format(+($("bonusTotal")?.value||0))} 円`
+    ].map(s=>`<div>${s}</div>`).join("");
+
+    // テーブル（#tbody からコピーしてPDF用tbodyを再構築）
+    const srcRows = document.querySelectorAll("#tbody tr");
+    const pdfTbody = document.querySelector("#pdfTable tbody");
+    pdfTbody.innerHTML = "";
+    srcRows.forEach((tr,idx)=>{
+      const tds = [...tr.children].map(td=>td.textContent);
+      const row = document.createElement("tr");
+      row.style.background = (idx%2===0) ? "#ffffff" : "#f8fafc";
+      row.innerHTML = `
+        <td style="text-align:center; padding:6px; border-bottom:1px solid #e5e7eb;">${tds[0]}</td>
+        <td style="text-align:right; padding:6px; border-bottom:1px solid #e5e7eb;">${tds[1]}</td>
+        <td style="text-align:right; padding:6px; border-bottom:1px solid #e5e7eb;">${tds[2]}</td>
+        <td style="text-align:right; padding:6px; border-bottom:1px solid #e5e7eb;">${tds[3]}</td>
+        <td style="text-align:right; padding:6px; border-bottom:1px solid #e5e7eb;">${tds[4]}</td>
+        <td style="text-align:right; padding:6px; border-bottom:1px solid #e5e7eb;">${tds[5]}</td>
+      `;
+      pdfTbody.appendChild(row);
     });
-    doc.save("car_loan_schedule.pdf");
-  };
 
-  save();
-}
+    // 2) html2canvasでキャプチャ（日本語OK／見た目そのまま）
+    const pdfRoot = document.getElementById("pdfDoc");
+    // A4横幅に合わせたベース（px）: 794px ≒ 210mm @ 96dpi相当
+    pdfRoot.style.width = "794px";
+
+    const canvas = await html2canvas(pdfRoot, {
+      scale: 2,           // 高解像度
+      useCORS: true,      // 画像があればCORS考慮
+      backgroundColor: "#ffffff"
+    });
+
+    // 3) jsPDFへ貼り付け（A4縦／複数ページ化）
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const imgData = canvas.toDataURL("image/png");
+    const pageWidth = pdf.internal.pageSize.getWidth();   // 210mm
+    const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
+
+    // 画像の表示サイズ（mm）を計算
+    const imgWidth = pageWidth; // 横いっぱい
+    const imgProps = { w: canvas.width, h: canvas.height };
+    const imgHeight = imgProps.h * (imgWidth * 3.78) / imgProps.w / 3.78; // px→mm換算（約3.78px/mm）
+
+    if (imgHeight <= pageHeight) {
+      // 1ページに収まる
+      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+    } else {
+      // 複数ページに分割して貼る
+      let sY = 0;
+      const pxPageHeight = Math.floor(pageHeight * 3.78); // mm→px
+      while (sY < canvas.height) {
+        const slice = document.createElement("canvas");
+        slice.width  = canvas.width;
+        slice.height = Math.min(pxPageHeight, canvas.height - sY);
+        const sctx = slice.getContext("2d");
+        sctx.drawImage(canvas, 0, sY, canvas.width, slice.height, 0, 0, slice.width, slice.height);
+        const img = slice.toDataURL("image/png");
+        const hmm = slice.height * (imgWidth * 3.78) / slice.width / 3.78;
+        pdf.addImage(img, "PNG", 0, 0, imgWidth, hmm);
+        sY += slice.height;
+        if (sY < canvas.height) pdf.addPage();
+      }
+    }
+
+    pdf.save("car_loan_schedule.pdf");
+  };
+})();
+</script>
+
 
 /* 再計算 */
 $("calc").addEventListener("click", compute);
 </script>
+  <!-- ===== PDF用テンプレート（非表示） ===== -->
+<div id="pdfDoc" style="position: fixed; left: -99999px; top: 0; width: 794px; background: #ffffff; color:#111827; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN','Yu Gothic', Meiryo, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <div style="padding:28px 32px 18px; border-bottom: 3px solid #0ea5e9; background: linear-gradient(90deg,#0ea5e9 0,#60a5fa 100%); color:#fff;">
+    <div style="font-size:22px; font-weight:800; letter-spacing:.3px;">自動車ローン シミュレーター</div>
+    <div style="margin-top:6px; font-size:12px; opacity:.9;">結果レポート / Generated at <span id="pdfDate"></span></div>
+  </div>
+
+  <!-- サマリー -->
+  <div style="padding:18px 32px;">
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
+      <div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px;">
+        <div style="font-size:11px; color:#64748b;">借入額（ローン金額）</div>
+        <div id="pdfLoan" style="font-size:20px; font-weight:800; margin-top:6px;"></div>
+      </div>
+      <div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px;">
+        <div style="font-size:11px; color:#64748b;">毎月返済（通常月）</div>
+        <div id="pdfMonthly" style="font-size:20px; font-weight:800; margin-top:6px;"></div>
+      </div>
+      <div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px;">
+        <div style="font-size:11px; color:#64748b;">総支払額（残価含む）</div>
+        <div id="pdfTotal" style="font-size:20px; font-weight:800; margin-top:6px;"></div>
+      </div>
+      <div style="border:1px solid #e5e7eb; border-radius:12px; padding:12px;">
+        <div style="font-size:11px; color:#64748b;">利息総額</div>
+        <div id="pdfInterest" style="font-size:20px; font-weight:800; margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <!-- 入力条件 -->
+    <div style="margin-top:14px; border:1px solid #e5e7eb; border-radius:12px; padding:12px; background:#f8fafc;">
+      <div style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:8px;">入力条件</div>
+      <div id="pdfInputs" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:6px 16px; font-size:12px; color:#334155;"></div>
+    </div>
+
+    <!-- スケジュールの見出し -->
+    <div style="margin-top:16px; font-size:13px; font-weight:700; color:#0f172a;">返済スケジュール</div>
+
+    <!-- テーブル（PDF表示用に軽量HTMLを再生成） -->
+    <table id="pdfTable" style="width:100%; border-collapse:collapse; margin-top:8px; font-size:11px;">
+      <thead>
+        <tr style="background:#0ea5e9; color:#fff;">
+          <th style="text-align:center; padding:8px; border-right:1px solid #ffffff55;">#</th>
+          <th style="text-align:right; padding:8px; border-right:1px solid #ffffff55;">返済額</th>
+          <th style="text-align:right; padding:8px; border-right:1px solid #ffffff55;">うち利息</th>
+          <th style="text-align:right; padding:8px; border-right:1px solid #ffffff55;">うち元金</th>
+          <th style="text-align:right; padding:8px; border-right:1px solid #ffffff55;">ボーナス</th>
+          <th style="text-align:right; padding:8px;">残高</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div style="margin-top:10px; font-size:10px; color:#64748b;">※ 表が長い場合は自動で複数ページに分割されます。</div>
+  </div>
+</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </body>
 </html>
