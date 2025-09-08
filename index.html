@@ -3,13 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>自動車ローン シミュレーター</title>
+<title>自動車ローン シミュレーター（ボーナス対応）</title>
 <meta name="theme-color" content="#0f172a">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="favicon.ico" type="image/x-icon">
-
 <style>
-  body{margin:0;background:#0f172a;color:#e5e7eb;font-family:sans-serif;-webkit-user-select:none;user-select:none}
+  body{margin:0;background:#0f172a;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;-webkit-user-select:none;user-select:none}
   input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1220;color:#fff}
   label{font-size:12px;color:#93c5fd}
   header{padding:16px;text-align:center;background:#111827}
@@ -21,14 +20,12 @@
   .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:16px}
   .card{background:#0b1220;padding:10px;border-radius:8px}
   .card h3{font-size:12px;color:#94a3b8;margin:0 0 4px}
-  .card .val{font-size:20px;font-weight:bold}
+  .card .val{font-size:20px;font-weight:700}
   table{width:100%;border-collapse:collapse;margin-top:16px}
-  th,td{padding:8px;border-bottom:1px solid #1f2937;text-align:right}
+  th,td{padding:8px;border-bottom:1px solid #1f2937;text-align:right;font-variant-numeric:tabular-nums}
   th{background:#0b1220;color:#93c5fd;position:sticky;top:0}
-
   /* スピンボタン削除 */
-  input::-webkit-outer-spin-button,
-  input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   input[type=number]{-moz-appearance:textfield}
 </style>
 </head>
@@ -36,27 +33,27 @@
 <header><h1>自動車ローン シミュレーター（ボーナス対応）</h1></header>
 
 <main>
-  <section class="panel">
+  <section class="panel" aria-label="入力フォーム">
     <div class="grid">
-      <div><label>車両価格（円）</label><input id="price" type="number" value="3000000"></div>
-      <div><label>頭金（円）</label><input id="down" type="number" value="500000"></div>
-      <div><label>年利（%）</label><input id="rate" type="number" value="3.0" step="0.01" max="30"></div>
+      <div><label for="price">車両価格（円）</label><input id="price" type="number" value="3000000" inputmode="numeric"></div>
+      <div><label for="down">頭金（円）</label><input id="down" type="number" value="500000" inputmode="numeric"></div>
+      <div><label for="rate">年利（%）</label><input id="rate" type="number" value="3.0" step="0.01" max="30" inputmode="decimal"></div>
 
       <div>
-        <label>支払回数（ヶ月）</label>
-        <select id="months"></select>
+        <label for="months">支払回数（ヶ月）</label>
+        <select id="months" aria-label="支払回数"></select>
       </div>
 
-      <div><label>残価率（%）</label><input id="balloonPct" type="number" value="0" max="30"></div>
-      <div><label>残価額（円）</label><input id="balloonAmt" type="number" value="0"></div>
+      <div><label for="balloonPct">残価率（%）</label><input id="balloonPct" type="number" value="0" max="30" inputmode="numeric"></div>
+      <div><label for="balloonAmt">残価額（円）</label><input id="balloonAmt" type="number" value="0" inputmode="numeric"></div>
 
-      <div><label>ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0"></div>
-      <div><label>ボーナス回数/年（最大4）</label><input id="bonusTimes" type="number" value="2" max="4"></div>
+      <div><label for="bonusAmt">ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0" inputmode="numeric"></div>
+      <div><label for="bonusTimes">ボーナス回数/年（最大4）</label><input id="bonusTimes" type="number" value="2" max="4" inputmode="numeric"></div>
     </div>
 
-    <div style="margin-top:12px">
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
       <button id="calc" class="btn primary">計算する</button>
-      <button id="download" class="btn">CSV</button>
+      <button id="download" class="btn" disabled>CSV</button>
     </div>
 
     <div class="summary">
@@ -67,7 +64,7 @@
     </div>
   </section>
 
-  <section class="panel">
+  <section class="panel" aria-label="返済スケジュール">
     <div style="max-height:55vh;overflow:auto">
       <table>
         <thead>
@@ -83,9 +80,9 @@
 
 <script>
 const fmt = new Intl.NumberFormat("ja-JP");
-const $  = id => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-// 支払回数(1〜120)を生成（デフォ60）
+// 支払回数(1〜120)を生成（デフォ60ヶ月）
 (function initMonths(){
   const sel = $("months");
   for(let i=1;i<=120;i++){
@@ -96,14 +93,23 @@ const $  = id => document.getElementById(id);
   }
 })();
 
-// フォーカス時に全選択（青反転→上書きしやすい）
+// フォーカス時は全選択（青反転→そのまま上書き）
 document.querySelectorAll("input[type=number]").forEach(inp=>{
   inp.addEventListener("focus", ()=>inp.select());
   inp.addEventListener("mousedown", e=>{ e.preventDefault(); inp.select(); });
 });
 
+// 入力の自動保存/復元（端末ローカル）
+const IDS=["price","down","rate","months","balloonPct","balloonAmt","bonusAmt","bonusTimes"];
+const KEY="car-loan-form-v2";
+function save(){ localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(IDS.map(i=>[i,$(i).value])))); }
+function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)||"null"); if(d){ IDS.forEach(i=>{ if(d[i]!=null) $(i).value=d[i]; }); } }catch{} }
+window.addEventListener("load", load);
+IDS.forEach(i=>$(i).addEventListener("change", save));
+
+// 計算
 function compute(){
-  // 入力取得＋上限
+  // 入力取得＋上限クランプ
   const price = +($("price").value||0);
   const down  = +($("down").value||0);
   const rate  = Math.min(+($("rate").value||0), 30);
@@ -113,23 +119,106 @@ function compute(){
   const bonusAmt   = +($("bonusAmt").value||0);
   const bonusTimes = Math.min(+($("bonusTimes").value||0), 4);
 
+  if (months <= 0) return;
+
   const loan = Math.max(price - down, 0);
   const r = rate / 100 / 12;
 
-  // 残価：率優先でなく、「額があれば額優先」、無ければ率で計算
+  // 残価：額が入っていれば額優先、なければ率で算出
   const residual = (balloonAmt>0) ? Math.min(loan, balloonAmt) : (loan * (balloonPct/100));
   const financed = Math.max(0, loan - residual);
 
-  // 月返済（ボーナスは別建てで加える）
+  // 月返済（ボーナスは別建てで加算）
   let monthly = 0;
-  if (months > 0) {
-    if (r === 0) monthly = financed / months;
-    else {
-      const pow = Math.pow(1 + r, months);
-      monthly = financed * (r * pow) / (pow - 1);
-    }
+  if (r === 0) monthly = financed / months;
+  else {
+    const pow = Math.pow(1 + r, months);
+    monthly = financed * (r * pow) / (pow - 1);
   }
 
-  // ボーナス間隔（年にn回 -> おおよそ等間隔）
+  // ボーナス間隔：年N回 → おおよそ「12/Nヶ月間隔」
   let interval = 0;
-  if (bonusAmt > 
+  if (bonusAmt > 0 && bonusTimes > 0) {
+    interval = Math.max(1, Math.round(12 / Math.min(bonusTimes,4)));
+  }
+
+  let bal = financed, totalPay = 0, totalInt = 0;
+  const tb = $("tbody"); tb.innerHTML = "";
+
+  for (let i = 1; i <= months; i++) {
+    const interest = bal * r;              // 当月利息
+    let principal = Math.min(bal, monthly - interest); // 元金
+    if (principal < 0) principal = 0;
+
+    // ボーナス（該当月のみ、残高を超えない範囲）
+    let bonus = 0;
+    if (interval && (i % interval) === 0) {
+      bonus = Math.min(bonusAmt, Math.max(0, bal - principal)); // 残に合わせて上限
+    }
+
+    // 最終月：端数調整（残価は別途最後に加算）
+    if (i === months) {
+      principal = Math.min(bal, principal);
+    }
+
+    bal -= (principal + bonus);
+    const payment = principal + interest + bonus;
+    totalPay += payment;
+    totalInt += interest;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i}</td>
+      <td>${fmt.format(payment)}</td>
+      <td>${fmt.format(interest)}</td>
+      <td>${fmt.format(principal)}</td>
+      <td>${fmt.format(bonus)}</td>
+      <td>${fmt.format(Math.max(0, bal))}</td>
+    `;
+    tb.appendChild(tr);
+  }
+
+  // 満期に残価を精算
+  let grandTotal = totalPay;
+  if (residual > 0) {
+    grandTotal += residual;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>満期</td>
+      <td>${fmt.format(residual)}</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>0</td>
+    `;
+    tb.appendChild(tr);
+  }
+
+  $("loan").textContent     = fmt.format(loan);
+  $("monthly").textContent  = fmt.format(monthly);
+  $("total").textContent    = fmt.format(grandTotal);
+  $("interest").textContent = fmt.format(totalInt);
+
+  // CSV
+  const rows=[["#","返済額","うち利息","うち元金","ボーナス","残高"]];
+  tb.querySelectorAll("tr").forEach(tr=>{
+    rows.push([...tr.children].map(td=>td.textContent.toString().replace(/,/g,"")));
+  });
+  const csvText = rows.map(r=>r.join(",")).join("\n");
+  const blob = new Blob([csvText], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const dl = $("download");
+  dl.disabled = false;
+  dl.onclick = () => {
+    const a=document.createElement("a");
+    a.href=url; a.download="car_loan_schedule.csv"; a.click();
+  };
+
+  save();
+}
+
+$("calc").addEventListener("click", compute);
+compute();
+</script>
+</body>
+</html>
