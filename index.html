@@ -330,9 +330,43 @@ function compute(){
   dl.onclick=()=>{const a=document.createElement("a");a.href=url;a.download="car_loan_schedule.csv";a.click();};
 
   // PDF：1) カバー（サマリー） 2) 明細（複数ページ）
-  const pdfBtn=$("pdf"); pdfBtn.disabled=false;
-  pdfBtn.onclick=async()=>{
-    const { jsPDF } = window.jspdf;
+document.getElementById("pdf").addEventListener("click", () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // タイトル
+  doc.setFontSize(16);
+  doc.text("自動車ローン シミュレーター 結果レポート", 14, 20);
+
+  // サマリー
+  doc.setFontSize(12);
+  doc.text(`借入額: ${document.getElementById("loan").textContent} 円`, 14, 35);
+  doc.text(`毎月返済: ${document.getElementById("monthly").textContent} 円`, 14, 45);
+  doc.text(`総支払額: ${document.getElementById("total").textContent} 円`, 14, 55);
+  doc.text(`利息総額: ${document.getElementById("interest").textContent} 円`, 14, 65);
+
+  // 改ページ
+  doc.addPage();
+
+  // 明細テーブル
+  const headers = [["#", "返済額", "利息", "元金", "ボーナス", "残高"]];
+  const rows = [];
+  document.querySelectorAll("#tbody tr").forEach(tr=>{
+    rows.push([...tr.children].map(td=>td.textContent));
+  });
+
+  doc.autoTable({
+    head: headers,
+    body: rows,
+    startY: 20,
+    styles: { fontSize: 9, cellPadding: 2 },
+    headStyles: { fillColor:[15,23,42], textColor: 255, halign:"center" },
+    bodyStyles: { halign:"right" }
+  });
+
+  doc.save("car_loan_report.pdf");
+});
+
 
     // ---- カバー流し込み ----
     $("pdfDate").textContent = new Date().toLocaleString();
