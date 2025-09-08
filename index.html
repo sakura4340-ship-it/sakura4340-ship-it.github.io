@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>自動車ローン シミュレーター（残価連動・ボーナス対応）</title>
+<title>自動車ローン シミュレーター（残価1〜99%対応）</title>
 <meta name="theme-color" content="#0f172a">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="favicon.ico" type="image/x-icon">
@@ -24,72 +24,55 @@
   table{width:100%;border-collapse:collapse;margin-top:16px}
   th,td{padding:8px;border-bottom:1px solid #1f2937;text-align:right;font-variant-numeric:tabular-nums}
   th{background:#0b1220;color:#93c5fd;position:sticky;top:0}
-  /* スピンボタン削除 */
   input::-webkit-outer-spin-button, input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   input[type=number]{-moz-appearance:textfield}
-  /* ダイヤル感（PC時の見た目補助。スマホはネイティブUIに切替） */
   #months, #bonusTimes { max-height: 200px; overflow-y: auto; }
-  /* ボーナス額が無効のときの見た目 */
   .disabled-like{opacity:.6}
 </style>
 </head>
 <body>
-<header><h1>自動車ローン シミュレーター（残価連動・ボーナス対応）</h1></header>
+<header><h1>自動車ローン シミュレーター（残価1〜99%対応・ボーナスあり）</h1></header>
 
 <main>
-  <section class="panel" aria-label="入力フォーム">
+  <section class="panel">
     <div class="grid">
-      <div><label for="price">車両価格（円）</label><input id="price" type="number" value="3000000" inputmode="numeric"></div>
-      <div><label for="down">頭金（円）</label><input id="down" type="number" value="500000" inputmode="numeric"></div>
-      <div><label for="rate">年利（%）</label><input id="rate" type="number" value="3.0" step="0.01" max="30" inputmode="decimal"></div>
+      <div><label for="price">車両価格（円）</label><input id="price" type="number" value="3000000"></div>
+      <div><label for="down">頭金（円）</label><input id="down" type="number" value="500000"></div>
+      <div><label for="rate">年利（%）</label><input id="rate" type="number" value="3.0" step="0.01" max="30"></div>
 
       <div>
         <label for="months">支払回数（ヶ月）</label>
-        <select id="months" aria-label="支払回数"></select>
+        <select id="months"></select>
       </div>
 
-      <div><label for="balloonPct">残価率（%）（最大30）</label><input id="balloonPct" type="number" value="0" max="30" inputmode="numeric"></div>
-      <div><label for="balloonAmt">残価額（円）</label><input id="balloonAmt" type="number" value="0" inputmode="numeric"></div>
+      <div><label for="balloonPct">残価率（%）（1〜99）</label><input id="balloonPct" type="number" value="0"></div>
+      <div><label for="balloonAmt">残価額（円）</label><input id="balloonAmt" type="number" value="0"></div>
 
-      <div id="bonusAmtWrap"><label for="bonusAmt">ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0" inputmode="numeric"></div>
+      <div id="bonusAmtWrap"><label for="bonusAmt">ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0"></div>
       <div>
         <label for="bonusTimes">ボーナス年回数（0〜4）</label>
-        <select id="bonusTimes" aria-label="ボーナス年回数"></select>
+        <select id="bonusTimes"></select>
       </div>
     </div>
 
-    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-      <button id="calc" class="btn primary">計算する</button>
-      <button id="download" class="btn" disabled>CSV</button>
-    </div>
+    <div style="margin-top:12px"><button id="calc" class="btn primary">計算する</button> <button id="download" class="btn" disabled>CSV</button></div>
 
     <div class="summary">
       <div class="card"><h3>借入額</h3><div id="loan" class="val">-</div></div>
-      <div class="card"><h3>毎月返済（通常月）</h3><div id="monthly" class="val">-</div></div>
-      <div class="card"><h3>総支払額（残価含む）</h3><div id="total" class="val">-</div></div>
+      <div class="card"><h3>毎月返済</h3><div id="monthly" class="val">-</div></div>
+      <div class="card"><h3>総支払額</h3><div id="total" class="val">-</div></div>
       <div class="card"><h3>利息総額</h3><div id="interest" class="val">-</div></div>
     </div>
   </section>
 
-  <section class="panel" aria-label="返済スケジュール">
-    <div style="max-height:55vh;overflow:auto">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th><th>返済額</th><th>うち利息</th><th>うち元金</th><th>ボーナス</th><th>残高</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-  </section>
+  <section class="panel"><div style="max-height:55vh;overflow:auto"><table><thead><tr><th>#</th><th>返済額</th><th>利息</th><th>元金</th><th>ボーナス</th><th>残高</th></tr></thead><tbody id="tbody"></tbody></table></div></section>
 </main>
 
 <script>
 const fmt = new Intl.NumberFormat("ja-JP");
 const $ = id => document.getElementById(id);
 
-// 支払回数(1〜120)／ボーナス年回数(0〜4) を生成（デフォ：60ヶ月・2回/年）
+// セレクト生成
 (function initSelectors(){
   const monthsSel = $("months");
   for(let i=1;i<=120;i++){
@@ -107,212 +90,87 @@ const $ = id => document.getElementById(id);
   }
 })();
 
-// 「ボーナス回数=0」のときは、ボーナス額を入力不可にする
+// ボーナス回数0→額無効化
 function toggleBonus(){
-  const times = +$("bonusTimes").value;
-  const amtEl = $("bonusAmt");
-  const wrap = $("bonusAmtWrap");
-  if(times === 0){
-    amtEl.value = 0;
-    amtEl.disabled = true;
-    wrap.classList.add("disabled-like");
-  }else{
-    amtEl.disabled = false;
-    wrap.classList.remove("disabled-like");
-  }
+  const times=+$("bonusTimes").value;
+  const amtEl=$("bonusAmt"),wrap=$("bonusAmtWrap");
+  if(times===0){amtEl.value=0;amtEl.disabled=true;wrap.classList.add("disabled-like");}
+  else{amtEl.disabled=false;wrap.classList.remove("disabled-like");}
 }
-$("bonusTimes").addEventListener("change", toggleBonus);
-toggleBonus(); // 初期反映
+$("bonusTimes").addEventListener("change",toggleBonus);toggleBonus();
 
-// フォーカス時は全選択（青反転→そのまま上書き）
-document.querySelectorAll("input[type=number]").forEach(inp=>{
-  inp.addEventListener("focus", ()=>inp.select());
-  inp.addEventListener("mousedown", e=>{ e.preventDefault(); inp.select(); });
-});
-
-// 入力の自動保存/復元
-const IDS=["price","down","rate","months","balloonPct","balloonAmt","bonusAmt","bonusTimes"];
-const KEY="car-loan-form-v4";
-function save(){ localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(IDS.map(i=>[i,$(i).value])))); }
-function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)||"null"); if(d){ IDS.forEach(i=>{ if(d[i]!=null) $(i).value=d[i]; }); toggleBonus(); } }catch{} }
-window.addEventListener("load", load);
-IDS.forEach(i=>$(i).addEventListener("change", save));
-
-// ===== 残価額 ↔ 残価率 連動（loan = price - down を基準） =====
-let syncing = false;
-let lastResidualSource = "pct"; // "amt" or "pct"：どちらを最後に直接編集したか
-
-function getLoan(){
-  const price = +($("price").value||0);
-  const down  = +($("down").value||0);
-  return Math.max(price - down, 0);
-}
-
-// 残価率→残価額へ反映
+// 残価額↔残価率 連動
+let syncing=false,lastSource="pct";
+function getLoan(){return Math.max(+($("price").value||0)-+($("down").value||0),0);}
 function syncFromPct(){
-  if(syncing) return;
-  syncing = true;
-  const loan = getLoan();
-  let pct = +($("balloonPct").value||0);
-  if (pct < 0) pct = 0;
-  if (pct > 30) pct = 30;              // 上限30%
-  // 金額はローンに対する率で算出（整数円、下方向丸め）
-  const amt = Math.floor(loan * (pct/100));
-  $("balloonPct").value = pct;
-  $("balloonAmt").value = isFinite(amt) ? amt : 0;
-  syncing = false;
-  lastResidualSource = "pct";
+  if(syncing)return; syncing=true;
+  const loan=getLoan(); let pct=+($("balloonPct").value||0);
+  if(pct<1)pct=1; if(pct>99)pct=99;
+  const amt=Math.floor(loan*pct/100);
+  $("balloonPct").value=pct;
+  $("balloonAmt").value=amt;
+  syncing=false; lastSource="pct";
 }
-
-// 残価額→残価率へ反映（30%上限に合わせて両者を整合）
 function syncFromAmt(){
-  if(syncing) return;
-  syncing = true;
-  const loan = getLoan();
-  let amt = +($("balloonAmt").value||0);
-  if (amt < 0) amt = 0;
-  if (amt > loan) amt = loan;          // 残価額は借入額を超えない
-  // 率を算出
-  let pct = loan>0 ? (amt/loan*100) : 0;
-  if (pct > 30) {                      // 30%超なら 30% に丸め、金額も再計算して整合させる
-    pct = 30;
-    amt = Math.floor(loan * 0.30);
-  }
-  $("balloonPct").value = Math.round(pct*100)/100; // 率は小数2桁まで表示
-  $("balloonAmt").value = isFinite(amt) ? amt : 0;
-  syncing = false;
-  lastResidualSource = "amt";
+  if(syncing)return; syncing=true;
+  const loan=getLoan(); let amt=+($("balloonAmt").value||0);
+  if(amt<0)amt=0; if(amt>loan)amt=loan;
+  let pct=loan>0?(amt/loan*100):0;
+  if(pct<1&&amt>0)pct=1;
+  if(pct>99)pct=99;
+  amt=Math.floor(loan*pct/100);
+  $("balloonPct").value=Math.round(pct*100)/100;
+  $("balloonAmt").value=amt;
+  syncing=false; lastSource="amt";
 }
-
-// price/down が変わったら、最後に編集した側の意図を保ったまま再計算
-function onLoanBaseChanged(){
-  if(lastResidualSource === "amt") syncFromAmt(); else syncFromPct();
-}
-
-$("balloonPct").addEventListener("input", syncFromPct);
-$("balloonAmt").addEventListener("input", syncFromAmt);
-$("price").addEventListener("input", onLoanBaseChanged);
-$("down").addEventListener("input", onLoanBaseChanged);
-
-// 初期同期
+function onLoanBaseChanged(){lastSource==="amt"?syncFromAmt():syncFromPct();}
+$("balloonPct").addEventListener("input",syncFromPct);
+$("balloonAmt").addEventListener("input",syncFromAmt);
+$("price").addEventListener("input",onLoanBaseChanged);
+$("down").addEventListener("input",onLoanBaseChanged);
 syncFromPct();
 
-// ===== 計算ロジック =====
+// 計算
 function compute(){
-  const price = +($("price").value||0);
-  const down  = +($("down").value||0);
-  const rate  = Math.min(+($("rate").value||0), 30);      // 年利≤30%
-  const months = Math.min(+($("months").value||0), 120);  // 回数≤120
-  let balloonPct = Math.min(+($("balloonPct").value||0), 30);
-  let balloonAmt = +($("balloonAmt").value||0);
-  const bonusTimes = Math.min(+($("bonusTimes").value||0), 4);   // 年回数≤4
-  const bonusAmt   = (bonusTimes===0) ? 0 : +($("bonusAmt").value||0);
+  const price=+($("price").value||0);
+  const down=+($("down").value||0);
+  const rate=Math.min(+($("rate").value||0),30);
+  const months=Math.min(+($("months").value||0),120);
+  let balloonPct=Math.min(Math.max(+($("balloonPct").value||0),1),99);
+  let balloonAmt=+($("balloonAmt").value||0);
+  const bonusTimes=Math.min(+($("bonusTimes").value||0),4);
+  const bonusAmt=(bonusTimes===0)?0:+($("bonusAmt").value||0);
 
-  if (months <= 0) return;
+  const loan=Math.max(price-down,0),r=rate/100/12;
+  const residual=balloonAmt,financed=Math.max(0,loan-residual);
 
-  const loan = Math.max(price - down, 0);
-  const r = rate / 100 / 12;
+  let monthly=0;
+  if(r===0) monthly=financed/months;
+  else{const pow=Math.pow(1+r,months);monthly=financed*(r*pow)/(pow-1);}
 
-  // 残価：同期済みだが、最終防御（上限・一貫性の担保）
-  if (balloonAmt > loan) balloonAmt = loan;
-  const fromPct = Math.floor(loan * (balloonPct/100));
-  // いずれか大きい/小さいでズレた場合は 30% 上限を優先して金額を再整合
-  const capAmt = Math.floor(loan * 0.30);
-  if (balloonPct > 30 || balloonAmt > capAmt){
-    balloonPct = 30;
-    balloonAmt = capAmt;
-  } else {
-    // どちらかがゼロ/不整合なら、率→額で整える
-    if (Math.abs(balloonAmt - fromPct) > 1) balloonAmt = fromPct;
-  }
+  let interval=0;
+  if(bonusAmt>0&&bonusTimes>0) interval=Math.max(1,Math.round(12/bonusTimes));
 
-  const residual = balloonAmt;
-  const financed = Math.max(0, loan - residual);
-
-  // 月返済（ボーナスは別加算）
-  let monthly = 0;
-  if (r === 0) monthly = months>0 ? financed / months : 0;
-  else {
-    const pow = Math.pow(1 + r, months);
-    monthly = financed * (r * pow) / (pow - 1);
-  }
-
-  // ボーナス間隔：年N回 → 12/Nヶ月間隔（四捨五入）
-  let interval = 0;
-  if (bonusAmt > 0 && bonusTimes > 0) {
-    interval = Math.max(1, Math.round(12 / bonusTimes));
-  }
-
-  let bal = financed, totalPay = 0, totalInt = 0;
-  const tb = $("tbody"); tb.innerHTML = "";
-
-  for (let i = 1; i <= months; i++) {
-    const interest = bal * r;
-    let principal = Math.min(bal, monthly - interest);
-    if (principal < 0) principal = 0;
-
-    // ボーナス（該当月のみ）
-    let bonus = 0;
-    if (interval && (i % interval) === 0) {
-      bonus = Math.min(bonusAmt, Math.max(0, bal - principal));
-    }
-
-    // 最終月：端数調整（残価は後で別途加算）
-    if (i === months) {
-      principal = Math.min(bal, principal);
-    }
-
-    bal -= (principal + bonus);
-    const payment = principal + interest + bonus;
-    totalPay += payment;
-    totalInt += interest;
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${i}</td>
-      <td>${fmt.format(payment)}</td>
-      <td>${fmt.format(interest)}</td>
-      <td>${fmt.format(principal)}</td>
-      <td>${fmt.format(bonus)}</td>
-      <td>${fmt.format(Math.max(0, bal))}</td>
-    `;
+  let bal=financed,totalPay=0,totalInt=0;
+  const tb=$("tbody");tb.innerHTML="";
+  for(let i=1;i<=months;i++){
+    const interest=bal*r;let principal=Math.min(bal,monthly-interest);if(principal<0)principal=0;
+    let bonus=0;if(interval&&(i%interval)===0){bonus=Math.min(bonusAmt,Math.max(0,bal-principal));}
+    if(i===months) principal=Math.min(bal,principal);
+    bal-=principal+bonus;const payment=principal+interest+bonus;
+    totalPay+=payment;totalInt+=interest;
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i}</td><td>${fmt.format(payment)}</td><td>${fmt.format(interest)}</td><td>${fmt.format(principal)}</td><td>${fmt.format(bonus)}</td><td>${fmt.format(Math.max(0,bal))}</td>`;
     tb.appendChild(tr);
   }
-
-  // 満期：残価を精算
-  let grandTotal = totalPay;
-  if (residual > 0) {
-    grandTotal += residual;
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>満期</td><td>${fmt.format(residual)}</td><td>—</td><td>—</td><td>—</td><td>0</td>`;
-    tb.appendChild(tr);
-  }
-
-  $("loan").textContent     = fmt.format(loan);
-  $("monthly").textContent  = fmt.format(monthly);
-  $("total").textContent    = fmt.format(grandTotal);
-  $("interest").textContent = fmt.format(totalInt);
-
-  // CSV
-  const rows=[["#","返済額","うち利息","うち元金","ボーナス","残高"]];
-  tb.querySelectorAll("tr").forEach(tr=>{
-    rows.push([...tr.children].map(td=>td.textContent.toString().replace(/,/g,"")));
-  });
-  const csvText = rows.map(r=>r.join(",")).join("\n");
-  const blob = new Blob([csvText], {type:"text/csv;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const dl = $("download");
-  dl.disabled = false;
-  dl.onclick = () => {
-    const a=document.createElement("a");
-    a.href=url; a.download="car_loan_schedule.csv"; a.click();
-  };
-
-  // 保存
-  localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(IDS.map(i=>[i,$(i).value]))));
+  let grandTotal=totalPay;
+  if(residual>0){grandTotal+=residual;const tr=document.createElement("tr");tr.innerHTML=`<td>満期</td><td>${fmt.format(residual)}</td><td>—</td><td>—</td><td>—</td><td>0</td>`;tb.appendChild(tr);}
+  $("loan").textContent=fmt.format(loan);
+  $("monthly").textContent=fmt.format(monthly);
+  $("total").textContent=fmt.format(grandTotal);
+  $("interest").textContent=fmt.format(totalInt);
 }
-
-$("calc").addEventListener("click", compute);
+$("calc").addEventListener("click",compute);
 compute();
 </script>
 </body>
