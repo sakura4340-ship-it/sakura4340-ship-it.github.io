@@ -57,27 +57,12 @@
   tbody tr:hover{background:#0f1c38}
   input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   input[type=number]{-moz-appearance:textfield}
-  .disabled-like{opacity:.55}
-
-  /* ===== 非表示のPDFカバーページ（日本語綺麗） ===== */
-  #pdfCover{position:fixed; left:-99999px; top:0; width:794px; background:#fff; color:#111827;
-    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
-  #pdfCover .head{padding:26px 32px; background:linear-gradient(90deg,#0ea5e9,#60a5fa); color:#fff}
-  #pdfCover .head .t1{font-size:22px; font-weight:800}
-  #pdfCover .head .t2{margin-top:6px; font-size:12px; opacity:.9}
-  #pdfCover .grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:16px 32px 8px}
-  #pdfCover .card{border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px}
-  #pdfCover .k{font-size:11px; color:#64748b}
-  #pdfCover .v{font-size:18px; font-weight:800; margin-top:6px}
-  #pdfCover .block{margin:12px 32px; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; background:#f8fafc}
-  #pdfCover .block h4{margin:0 0 8px; font-size:13px}
-  #pdfCover .inputs{display:grid; grid-template-columns:repeat(2,1fr); gap:6px 16px; font-size:12px; color:#334155}
 </style>
 </head>
 <body>
 <header>
   <h1>自動車ローン シミュレーター</h1>
-  <p>残価＝車両価格基準／ローン金額＝支払い総額−頭金／CSV＋PDF出力</p>
+  <p>残価＝車両価格基準／ローン金額＝支払い総額−頭金／CSV＋PDF（罫線表・自動分割）</p>
 </header>
 
 <div class="container">
@@ -114,7 +99,7 @@
           <div class="col-4" id="bonusAmtWrap"><label>ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0"></div>
           <div class="col-4" id="bonusTotalWrap"><label>ボーナス月の総支払額（円）</label><input id="bonusTotal" type="number" value="0"></div>
 
-          <div class="col-12 actions" style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="col-12" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">
             <button id="calc" class="btn primary">計算する</button>
             <button id="download" class="btn" disabled>CSV</button>
             <button id="pdf" class="btn" disabled>PDF</button>
@@ -146,27 +131,9 @@
   </div>
 </div>
 
-<!-- PDFカバーページ（非表示） -->
-<div id="pdfCover">
-  <div class="head">
-    <div class="t1">自動車ローン シミュレーター — 結果レポート</div>
-    <div class="t2">Generated at <span id="pdfDate"></span></div>
-  </div>
-  <div class="grid">
-    <div class="card"><div class="k">借入額（ローン金額）</div><div id="pdfLoan" class="v"></div></div>
-    <div class="card"><div class="k">毎月返済（通常月）</div><div id="pdfMonthly" class="v"></div></div>
-    <div class="card"><div class="k">総支払額（残価含む）</div><div id="pdfTotal" class="v"></div></div>
-    <div class="card"><div class="k">利息総額</div><div id="pdfInterest" class="v"></div></div>
-  </div>
-  <div class="block">
-    <h4>入力条件</h4>
-    <div id="pdfInputs" class="inputs"></div>
-  </div>
-</div>
-
-<!-- ライブラリ -->
+<!-- PDF用ライブラリ（文字ベース＆罫線表） -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script>
 const fmt=new Intl.NumberFormat("ja-JP");const $=id=>document.getElementById(id);
 
@@ -329,52 +296,28 @@ function compute(){
   const dl=$("download"); dl.disabled=false;
   dl.onclick=()=>{const a=document.createElement("a");a.href=url;a.download="car_loan_schedule.csv";a.click();};
 
-  // PDF：1) カバー（サマリー） 2) 明細（複数ページ）
-document.getElementById("pdf").addEventListener("click", () => {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  // PDF（サマリー + 罫線表／自動ページ分割）
+  const pdfBtn=$("pdf"); pdfBtn.disabled=false;
+  pdfBtn.onclick=()=>{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF("p","mm","a4");
 
-  // タイトル
-  doc.setFontSize(16);
-  doc.text("自動車ローン シミュレーター 結果レポート", 14, 20);
+    // 1ページ目：タイトル & サマリー
+    doc.setFontSize(16);
+    doc.text("自動車ローン シミュレーター 結果レポート", 14, 18);
+    doc.setDrawColor(15,23,42); doc.line(14, 20, 196, 20);
 
-  // サマリー
-  doc.setFontSize(12);
-  doc.text(`借入額: ${document.getElementById("loan").textContent} 円`, 14, 35);
-  doc.text(`毎月返済: ${document.getElementById("monthly").textContent} 円`, 14, 45);
-  doc.text(`総支払額: ${document.getElementById("total").textContent} 円`, 14, 55);
-  doc.text(`利息総額: ${document.getElementById("interest").textContent} 円`, 14, 65);
+    doc.setFontSize(12);
+    let y=30;
+    doc.text(`借入額: ${$("loan").textContent} 円`, 14, y); y+=8;
+    doc.text(`毎月返済（通常月）: ${$("monthly").textContent} 円`, 14, y); y+=8;
+    doc.text(`総支払額（残価含む）: ${$("total").textContent} 円`, 14, y); y+=8;
+    doc.text(`利息総額: ${$("interest").textContent} 円`, 14, y); y+=12;
 
-  // 改ページ
-  doc.addPage();
-
-  // 明細テーブル
-  const headers = [["#", "返済額", "利息", "元金", "ボーナス", "残高"]];
-  const rows = [];
-  document.querySelectorAll("#tbody tr").forEach(tr=>{
-    rows.push([...tr.children].map(td=>td.textContent));
-  });
-
-  doc.autoTable({
-    head: headers,
-    body: rows,
-    startY: 20,
-    styles: { fontSize: 9, cellPadding: 2 },
-    headStyles: { fillColor:[15,23,42], textColor: 255, halign:"center" },
-    bodyStyles: { halign:"right" }
-  });
-
-  doc.save("car_loan_report.pdf");
-});
-
-
-    // ---- カバー流し込み ----
-    $("pdfDate").textContent = new Date().toLocaleString();
-    $("pdfLoan").textContent = $("loan").textContent + " 円";
-    $("pdfMonthly").textContent = $("monthly").textContent + " 円";
-    $("pdfTotal").textContent = $("total").textContent + " 円";
-    $("pdfInterest").textContent = $("interest").textContent + " 円";
-    const inputs=[
+    doc.setFontSize(12);
+    doc.text("入力条件", 14, y); y+=6;
+    doc.setFontSize(10);
+    const lines=[
       `車両価格：${fmt.format(+($("price").value||0))} 円`,
       `支払い総額：${fmt.format(+($("totalCost").value||0))} 円`,
       `頭金：${fmt.format(+($("down").value||0))} 円`,
@@ -383,55 +326,32 @@ document.getElementById("pdf").addEventListener("click", () => {
       `回数：${+($("months").value||0)} ヶ月`,
       `残価率：${+($("balloonPct").value||0)} %`,
       `残価額：${fmt.format(+($("balloonAmt").value||0))} 円`,
-      `有効残価（分割控除）：${fmt.format(effectiveResidual)} 円`,
       `ボーナス年回数：${+($("bonusTimes").value||0)} 回`,
-      `方式：${document.querySelector('input[name="bonusMode"]:checked')?.value==="add"?"加算額":"総額"}`,
+      `方式：${document.querySelector('input[name="bonusMode"]:checked')?.value==="add"?"加算額":"ボーナス月総額"}`,
       `加算額：${fmt.format(+($("bonusAmt").value||0))} 円`,
       `ボーナス月総額：${fmt.format(+($("bonusTotal").value||0))} 円`
     ];
-    $("pdfInputs").innerHTML = inputs.map(s=>`<div>${s}</div>`).join("");
+    lines.forEach(t=>{ doc.text(t, 16, y); y+=6; });
 
-    // ---- カバーをキャプチャ ----
-    const cover = document.getElementById("pdfCover");
-    cover.style.width = "794px"; // A4想定の幅
-    const coverCanvas = await html2canvas(cover, { scale:2, backgroundColor:"#fff", useCORS:true });
+    // 2ページ目以降：返済明細（autotable）
+    doc.addPage();
+    const headers=[["#","返済額","利息","元金","ボーナス","残高"]];
+    const body=[];
+    document.querySelectorAll("#tbody tr").forEach(tr=>{
+      body.push([...tr.children].map(td=>td.textContent));
+    });
 
-    // ---- 明細テーブルをキャプチャ（長いので分割） ----
-    const tableEl = document.querySelector(".table-wrap");
-    const tableCanvas = await html2canvas(tableEl, { scale:2, backgroundColor:"#fff", useCORS:true });
+    doc.autoTable({
+      head: headers,
+      body,
+      startY: 16,
+      margin: { left: 12, right: 12 },
+      styles: { fontSize: 9, cellPadding: 2, halign: "right" },
+      headStyles: { fillColor:[15,23,42], textColor:255, halign:"center" },
+      columnStyles: { 0:{halign:"center"} }
+    });
 
-    const pdf = new jsPDF("p","mm","a4");
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-
-    // ページ1：カバー
-    {
-      const img = coverCanvas.toDataURL("image/png");
-      const imgW = pageW;
-      const imgH = coverCanvas.height * imgW / coverCanvas.width / 3.78;
-      pdf.addImage(img,"PNG",0,0,imgW,imgH);
-    }
-
-    // 以降：明細（複数ページ分割）
-    const pxPerMm = 3.78;
-    const pxPageH = Math.floor(pageH * pxPerMm);
-    let sY = 0;
-    while (sY < tableCanvas.height){
-      const slice = document.createElement("canvas");
-      slice.width  = tableCanvas.width;
-      slice.height = Math.min(pxPageH, tableCanvas.height - sY);
-      const ctx = slice.getContext("2d");
-      ctx.drawImage(tableCanvas, 0, sY, tableCanvas.width, slice.height, 0, 0, slice.width, slice.height);
-      const img = slice.toDataURL("image/png");
-      const imgW = pageW;
-      const imgH = slice.height * imgW / slice.width / pxPerMm;
-      pdf.addPage();
-      pdf.addImage(img, "PNG", 0, 0, imgW, imgH);
-      sY += slice.height;
-    }
-
-    // 保存
-    pdf.save("car_loan_schedule.pdf");
+    doc.save("car_loan_report.pdf");
   };
 }
 
