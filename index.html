@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>自動車ローン シミュレーター（ボーナス対応）</title>
+<title>自動車ローン シミュレーター（残価連動・ボーナス対応）</title>
 <meta name="theme-color" content="#0f172a">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="favicon.ico" type="image/x-icon">
@@ -34,7 +34,7 @@
 </style>
 </head>
 <body>
-<header><h1>自動車ローン シミュレーター（ボーナス対応）</h1></header>
+<header><h1>自動車ローン シミュレーター（残価連動・ボーナス対応）</h1></header>
 
 <main>
   <section class="panel" aria-label="入力フォーム">
@@ -48,7 +48,7 @@
         <select id="months" aria-label="支払回数"></select>
       </div>
 
-      <div><label for="balloonPct">残価率（%）</label><input id="balloonPct" type="number" value="0" max="30" inputmode="numeric"></div>
+      <div><label for="balloonPct">残価率（%）（最大30）</label><input id="balloonPct" type="number" value="0" max="30" inputmode="numeric"></div>
       <div><label for="balloonAmt">残価額（円）</label><input id="balloonAmt" type="number" value="0" inputmode="numeric"></div>
 
       <div id="bonusAmtWrap"><label for="bonusAmt">ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0" inputmode="numeric"></div>
@@ -130,38 +130,108 @@ document.querySelectorAll("input[type=number]").forEach(inp=>{
   inp.addEventListener("mousedown", e=>{ e.preventDefault(); inp.select(); });
 });
 
-// 入力の自動保存/復元（端末ローカル）
+// 入力の自動保存/復元
 const IDS=["price","down","rate","months","balloonPct","balloonAmt","bonusAmt","bonusTimes"];
-const KEY="car-loan-form-v3";
+const KEY="car-loan-form-v4";
 function save(){ localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(IDS.map(i=>[i,$(i).value])))); }
 function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)||"null"); if(d){ IDS.forEach(i=>{ if(d[i]!=null) $(i).value=d[i]; }); toggleBonus(); } }catch{} }
 window.addEventListener("load", load);
 IDS.forEach(i=>$(i).addEventListener("change", save));
 
-// 計算
+// ===== 残価額 ↔ 残価率 連動（loan = price - down を基準） =====
+let syncing = false;
+let lastResidualSource = "pct"; // "amt" or "pct"：どちらを最後に直接編集したか
+
+function getLoan(){
+  const price = +($("price").value||0);
+  const down  = +($("down").value||0);
+  return Math.max(price - down, 0);
+}
+
+// 残価率→残価額へ反映
+function syncFromPct(){
+  if(syncing) return;
+  syncing = true;
+  const loan = getLoan();
+  let pct = +($("balloonPct").value||0);
+  if (pct < 0) pct = 0;
+  if (pct > 30) pct = 30;              // 上限30%
+  // 金額はローンに対する率で算出（整数円、下方向丸め）
+  const amt = Math.floor(loan * (pct/100));
+  $("balloonPct").value = pct;
+  $("balloonAmt").value = isFinite(amt) ? amt : 0;
+  syncing = false;
+  lastResidualSource = "pct";
+}
+
+// 残価額→残価率へ反映（30%上限に合わせて両者を整合）
+function syncFromAmt(){
+  if(syncing) return;
+  syncing = true;
+  const loan = getLoan();
+  let amt = +($("balloonAmt").value||0);
+  if (amt < 0) amt = 0;
+  if (amt > loan) amt = loan;          // 残価額は借入額を超えない
+  // 率を算出
+  let pct = loan>0 ? (amt/loan*100) : 0;
+  if (pct > 30) {                      // 30%超なら 30% に丸め、金額も再計算して整合させる
+    pct = 30;
+    amt = Math.floor(loan * 0.30);
+  }
+  $("balloonPct").value = Math.round(pct*100)/100; // 率は小数2桁まで表示
+  $("balloonAmt").value = isFinite(amt) ? amt : 0;
+  syncing = false;
+  lastResidualSource = "amt";
+}
+
+// price/down が変わったら、最後に編集した側の意図を保ったまま再計算
+function onLoanBaseChanged(){
+  if(lastResidualSource === "amt") syncFromAmt(); else syncFromPct();
+}
+
+$("balloonPct").addEventListener("input", syncFromPct);
+$("balloonAmt").addEventListener("input", syncFromAmt);
+$("price").addEventListener("input", onLoanBaseChanged);
+$("down").addEventListener("input", onLoanBaseChanged);
+
+// 初期同期
+syncFromPct();
+
+// ===== 計算ロジック =====
 function compute(){
-  // 入力取得＋上限クランプ
   const price = +($("price").value||0);
   const down  = +($("down").value||0);
   const rate  = Math.min(+($("rate").value||0), 30);      // 年利≤30%
   const months = Math.min(+($("months").value||0), 120);  // 回数≤120
-  const balloonPct = Math.min(+($("balloonPct").value||0), 30); // 残価率≤30%
-  const balloonAmt = +($("balloonAmt").value||0);
+  let balloonPct = Math.min(+($("balloonPct").value||0), 30);
+  let balloonAmt = +($("balloonAmt").value||0);
   const bonusTimes = Math.min(+($("bonusTimes").value||0), 4);   // 年回数≤4
-  const bonusAmt   = (bonusTimes===0) ? 0 : +($("bonusAmt").value||0); // 0回なら強制0
+  const bonusAmt   = (bonusTimes===0) ? 0 : +($("bonusAmt").value||0);
 
   if (months <= 0) return;
 
   const loan = Math.max(price - down, 0);
   const r = rate / 100 / 12;
 
-  // 残価：額があれば優先、無ければ率
-  const residual = (balloonAmt>0) ? Math.min(loan, balloonAmt) : (loan * (balloonPct/100));
+  // 残価：同期済みだが、最終防御（上限・一貫性の担保）
+  if (balloonAmt > loan) balloonAmt = loan;
+  const fromPct = Math.floor(loan * (balloonPct/100));
+  // いずれか大きい/小さいでズレた場合は 30% 上限を優先して金額を再整合
+  const capAmt = Math.floor(loan * 0.30);
+  if (balloonPct > 30 || balloonAmt > capAmt){
+    balloonPct = 30;
+    balloonAmt = capAmt;
+  } else {
+    // どちらかがゼロ/不整合なら、率→額で整える
+    if (Math.abs(balloonAmt - fromPct) > 1) balloonAmt = fromPct;
+  }
+
+  const residual = balloonAmt;
   const financed = Math.max(0, loan - residual);
 
-  // 月返済（ボーナスは別で加算）
+  // 月返済（ボーナスは別加算）
   let monthly = 0;
-  if (r === 0) monthly = financed / months;
+  if (r === 0) monthly = months>0 ? financed / months : 0;
   else {
     const pow = Math.pow(1 + r, months);
     monthly = financed * (r * pow) / (pow - 1);
@@ -187,7 +257,7 @@ function compute(){
       bonus = Math.min(bonusAmt, Math.max(0, bal - principal));
     }
 
-    // 最終月：端数調整（残価は後で加算）
+    // 最終月：端数調整（残価は後で別途加算）
     if (i === months) {
       principal = Math.min(bal, principal);
     }
@@ -239,11 +309,7 @@ function compute(){
   };
 
   // 保存
-  localStorage.setItem("car-loan-form-v3", JSON.stringify({
-    price:$("price").value, down:$("down").value, rate:$("rate").value,
-    months:$("months").value, balloonPct:$("balloonPct").value, balloonAmt:$("balloonAmt").value,
-    bonusAmt:$("bonusAmt").value, bonusTimes:$("bonusTimes").value
-  }));
+  localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(IDS.map(i=>[i,$(i).value]))));
 }
 
 $("calc").addEventListener("click", compute);
