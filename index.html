@@ -131,23 +131,31 @@
   </div>
 </div>
 
+
 <!-- PDF用ライブラリ（文字ベース＆罫線表） -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script>
 const fmt=new Intl.NumberFormat("ja-JP");const $=id=>document.getElementById(id);
 
-/* 日本語フォントを jsPDF に登録して使う */
+/* 日本語フォントを jsPDF に登録して使う（失敗しても落とさない） */
 let JP_FONT_READY=false;
 async function useJPFont(doc){
-  if(JP_FONT_READY){ doc.setFont("NotoSansJP","normal"); return; }
-  const res = await fetch("fonts/NotoSansJP-Regular.ttf",{cache:"reload"});
-  const buf = await res.arrayBuffer();
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-  doc.addFileToVFS("NotoSansJP-Regular.ttf", b64);
-  doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
-  doc.setFont("NotoSansJP","normal");
-  JP_FONT_READY=true;
+  if(JP_FONT_READY){ doc.setFont("NotoSansJP","normal"); return true; }
+  try{
+    const res = await fetch("fonts/NotoSansJP-Regular.ttf",{cache:"reload"});
+    if(!res.ok) throw new Error("Font HTTP Status "+res.status);
+    const buf = await res.arrayBuffer();
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    doc.addFileToVFS("NotoSansJP-Regular.ttf", b64);
+    doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
+    doc.setFont("NotoSansJP","normal");
+    JP_FONT_READY=true;
+    return true;
+  }catch(err){
+    console.warn("[PDF] 日本語フォント読込に失敗:", err);
+    return false; // フォールバックで続行
+  }
 }
 
 /* セレクト生成 */
@@ -227,11 +235,9 @@ function compute(){
 
   const r = rate/100/12;
 
-  // 分割元本から控除する有効残価 = min(残価額, ローン金額)
   const effectiveResidual = Math.min(balloonAmt, loan);
   const financed = Math.max(loan - effectiveResidual, 0);
 
-  // 毎月返済（等額）を整数円に
   let monthly = 0;
   if (r === 0) monthly = Math.round(financed / months);
   else {
@@ -254,11 +260,8 @@ function compute(){
     const isBonus = interval && (i % interval) === 0;
 
     if(isBonus){
-      if(mode==="add"){
-        bonus = bonusAmt;
-      }else{ // total
-        basePay = bonusTotal; // その月の総支払額
-      }
+      if(mode==="add"){ bonus = bonusAmt; }
+      else{ basePay = bonusTotal; }
     }
 
     const pay = Math.round(mode==="add" ? (basePay + bonus) : basePay);
@@ -284,7 +287,6 @@ function compute(){
     tb.appendChild(tr);
   }
 
-  // 満期：有効残価の精算
   let grandTotal = totalPay;
   if(effectiveResidual > 0){
     grandTotal += effectiveResidual;
@@ -309,61 +311,68 @@ function compute(){
   const dl=$("download"); dl.disabled=false;
   dl.onclick=()=>{const a=document.createElement("a");a.href=url;a.download="car_loan_schedule.csv";a.click();};
 
-  // PDF（サマリー + 罫線表／日本語フォント埋め込み）
+  // PDF 出力（安全版）
   const pdfBtn=$("pdf"); pdfBtn.disabled=false;
   pdfBtn.onclick=async()=>{
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF("p","mm","a4");
-    await useJPFont(doc); // ★日本語フォント適用
+    try{
+      if(!window.jspdf || !window.jspdf.jsPDF){
+        alert("jsPDFが読み込まれていません。スクリプトの順序を確認してください。");
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF("p","mm","a4");
+      const fontOK = await useJPFont(doc); // 日本語フォント（失敗でも続行）
 
-    // 1ページ目：タイトル & サマリー
-    doc.setFontSize(16);
-    doc.text("自動車ローン シミュレーター 結果レポート", 14, 18);
-    doc.setDrawColor(15,23,42); doc.line(14, 20, 196, 20);
+      // 1ページ目：タイトル & サマリー
+      if(fontOK) doc.setFont("NotoSansJP","normal");
+      doc.setFontSize(16);
+      doc.text("自動車ローン シミュレーター 結果レポート", 14, 18);
+      doc.setDrawColor(15,23,42); doc.line(14, 20, 196, 20);
 
-    doc.setFontSize(12);
-    let y=30;
-    doc.text(`借入額: ${$("loan").textContent} 円`, 14, y); y+=8;
-    doc.text(`毎月返済（通常月）: ${$("monthly").textContent} 円`, 14, y); y+=8;
-    doc.text(`総支払額（残価含む）: ${$("total").textContent} 円`, 14, y); y+=8;
-    doc.text(`利息総額: ${$("interest").textContent} 円`, 14, y); y+=10;
+      doc.setFontSize(12);
+      let y=30;
+      doc.text(`借入額: ${$("loan").textContent} 円`, 14, y); y+=8;
+      doc.text(`毎月返済（通常月）: ${$("monthly").textContent} 円`, 14, y); y+=8;
+      doc.text(`総支払額（残価含む）: ${$("total").textContent} 円`, 14, y); y+=8;
+      doc.text(`利息総額: ${$("interest").textContent} 円`, 14, y); y+=10;
 
-    doc.setFontSize(12);
-    doc.text("入力条件", 14, y); y+=6; doc.setFontSize(10);
-    [
-      `車両価格：${fmt.format(+($("price").value||0))} 円`,
-      `支払い総額：${fmt.format(+($("totalCost").value||0))} 円`,
-      `頭金：${fmt.format(+($("down").value||0))} 円`,
-      `ローン金額：${$("loan").textContent} 円`,
-      `年利：${+($("rate").value||0)} %`,
-      `回数：${+($("months").value||0)} ヶ月`,
-      `残価率：${+($("balloonPct").value||0)} %`,
-      `残価額：${fmt.format(+($("balloonAmt").value||0))} 円`,
-      `ボーナス年回数：${+($("bonusTimes").value||0)} 回`,
-      `方式：${document.querySelector('input[name="bonusMode"]:checked')?.value==="add"?"加算額":"ボーナス月総額"}`,
-      `加算額：${fmt.format(+($("bonusAmt").value||0))} 円`,
-      `ボーナス月総額：${fmt.format(+($("bonusTotal").value||0))} 円`
-    ].forEach(t=>{ doc.text(t, 16, y); y+=6; });
+      if(!fontOK){
+        doc.setFontSize(10); doc.setTextColor(200,0,0);
+        doc.text("※ 日本語フォントが読めなかったため英数字フォントで出力しました。", 14, y); y+=8;
+        doc.text("fonts/NotoSansJP-Regular.ttf を /fonts 配下に置き、?v=再読込 してください。", 14, y);
+        doc.setTextColor(0,0,0);
+      }
 
-    // 2ページ目以降：返済明細（autotable）
-    doc.addPage();
-    const headers=[["#","返済額","利息","元金","ボーナス","残高"]];
-    const body=[];
-    document.querySelectorAll("#tbody tr").forEach(tr=>{
-      body.push([...tr.children].map(td=>td.textContent));
-    });
+      // 2ページ目：返済明細（autotable）
+      doc.addPage();
+      if(typeof doc.autoTable !== "function"){
+        alert("autoTableプラグインが読み込まれていません。CDNの順序を確認してください。");
+        return;
+      }
 
-    doc.autoTable({
-      head: headers,
-      body,
-      startY: 16,
-      margin: { left: 12, right: 12 },
-      styles: { font: "NotoSansJP", fontSize: 9, cellPadding: 2, halign: "right" },
-      headStyles: { font: "NotoSansJP", fillColor:[15,23,42], textColor:255, halign:"center" },
-      columnStyles: { 0:{halign:"center"} }
-    });
+      const headers=[["#","返済額","利息","元金","ボーナス","残高"]];
+      const body=[];
+      document.querySelectorAll("#tbody tr").forEach(tr=>{
+        body.push([...tr.children].map(td=>td.textContent));
+      });
 
-    doc.save("car_loan_report.pdf");
+      doc.autoTable({
+        head: headers,
+        body,
+        startY: 16,
+        margin: { left: 12, right: 12 },
+        styles: { font: fontOK ? "NotoSansJP" : undefined, fontSize: 9, cellPadding: 2, halign: "right" },
+        headStyles: { font: fontOK ? "NotoSansJP" : undefined, fillColor:[15,23,42], textColor:255, halign:"center" },
+        columnStyles: { 0:{halign:"center"} }
+      });
+
+      // 保存（Safari対策フォールバック）
+      try{ doc.save("car_loan_report.pdf"); }
+      catch(e){ console.warn("save失敗→bloburlで開く", e); window.open(doc.output("bloburl"), "_blank"); }
+    }catch(err){
+      console.error("[PDF] 生成エラー:", err);
+      alert("PDF生成でエラー: " + (err?.message || err));
+    }
   };
 }
 
@@ -375,5 +384,6 @@ window.addEventListener("load", ()=>{
   compute();
 });
 </script>
+
 </body>
 </html>
