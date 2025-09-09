@@ -384,6 +384,37 @@ window.addEventListener("load", ()=>{
   compute();
 });
 </script>
+<!-- 診断ボタン（Console不要） -->
+<button id="diag" style="position:fixed;right:12px;bottom:12px;padding:10px 12px;border-radius:10px;border:1px solid #385; background:#1a2; color:#fff; z-index:9999;">
+  PDF診断
+</button>
+<script>
+document.getElementById("diag").onclick = async () => {
+  try{
+    // 1) jsPDF / autotable の読込状況
+    const hasJsPDF = !!(window.jspdf && window.jspdf.jsPDF);
+    const hasAT = !!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable);
+    // 2) フォント到達性
+    let fontStatus = "未確認";
+    try{
+      const r = await fetch("fonts/NotoSansJP-Regular.ttf", {cache:"reload"});
+      fontStatus = r.status + " (" + (r.ok ? "OK" : "NG") + ")";
+    }catch(e){
+      fontStatus = "ERROR: " + (e.message||e);
+    }
+    // 3) 結果表示
+    alert(
+      "[PDF診断結果]\n" +
+      "jsPDF: " + (hasJsPDF ? "OK" : "NG") + "\n" +
+      "autotable: " + (hasAT ? "OK" : "NG") + "\n" +
+      "フォント: " + fontStatus + "\n\n" +
+      "※ フォントが 200 OK でない場合は、/fonts/NotoSansJP-Regular.ttf の場所と名前を確認してね。"
+    );
+  }catch(e){
+    alert("診断エラー: " + (e.message||e));
+  }
+};
+</script>
 
 </body>
 </html>
