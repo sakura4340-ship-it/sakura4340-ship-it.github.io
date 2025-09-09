@@ -141,22 +141,28 @@ const fmt=new Intl.NumberFormat("ja-JP");const $=id=>document.getElementById(id)
 /* 日本語フォントを jsPDF に登録して使う（失敗しても落とさない） */
 let JP_FONT_READY=false;
 async function useJPFont(doc){
-  if(JP_FONT_READY){ doc.setFont("NotoSansJP","normal"); return true; }
+  if (JP_FONT_READY){ doc.setFont("NotoSansJP","normal"); return true; }
   try{
-    const res = await fetch("fonts/NotoSansJP-Regular.ttf",{cache:"reload"});
-    if(!res.ok) throw new Error("Font HTTP Status "+res.status);
+    // まず正しい名前
+    let res = await fetch("fonts/NotoSansJP-Regular.ttf", {cache:"reload"});
+    // ダメなら「スペース有り」のファイル名を試す
+    if(!res.ok) res = await fetch("fonts/NotoSansJP-Regular%20.ttf", {cache:"reload"});
+    if(!res.ok) throw new Error("Font not found: " + res.status);
+
     const buf = await res.arrayBuffer();
     const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
     doc.addFileToVFS("NotoSansJP-Regular.ttf", b64);
     doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
     doc.setFont("NotoSansJP","normal");
-    JP_FONT_READY=true;
+    JP_FONT_READY = true;
     return true;
-  }catch(err){
-    console.warn("[PDF] 日本語フォント読込に失敗:", err);
-    return false; // フォールバックで続行
+  }catch(e){
+    alert("日本語フォントを読み込めませんでした。ファイル名を NotoSansJP-Regular.ttf に直してください。");
+    console.warn(e);
+    return false;
   }
 }
+
 
 /* セレクト生成 */
 (()=>{for(let i=1;i<=120;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===60)op.selected=true;$("months").appendChild(op);}for(let i=0;i<=4;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===2)op.selected=true;$("bonusTimes").appendChild(op);}})();
