@@ -22,7 +22,7 @@
   }
   header{padding:28px 16px;text-align:center;background:linear-gradient(180deg, rgba(15,23,42,.6), transparent)}
   header h1{margin:.2rem 0;font-size:clamp(22px,3.2vw,30px)}
-  header p{margin:.3rem 0 0;color:var(--muted)}
+  header p{margin:.3rem 0 0;color:#9aa4b2}
   .container{max-width:1200px;margin:0 auto;padding:18px}
   .layout{display:grid;grid-template-columns:1.2fr .8fr;gap:var(--gap)}
   @media (max-width:980px){.layout{grid-template-columns:1fr}}
@@ -62,7 +62,7 @@
 <body>
 <header>
   <h1>自動車ローン シミュレーター</h1>
-  <p>残価＝車両価格基準／ローン金額＝支払い総額−頭金／CSV＋PDF（罫線表・自動分割）</p>
+  <p>残価＝車両価格基準／ローン金額＝支払い総額−頭金／CSV＋PDF（罫線表・日本語化け無し）</p>
 </header>
 
 <div class="container">
@@ -135,20 +135,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script>
-// 日本語フォントを読み込んでjsPDFに登録する関数
-let JP_FONT_READY = false;
+const fmt=new Intl.NumberFormat("ja-JP");const $=id=>document.getElementById(id);
+
+/* 日本語フォントを jsPDF に登録して使う */
+let JP_FONT_READY=false;
 async function useJPFont(doc){
-  if (JP_FONT_READY) { doc.setFont("NotoSansJP","normal"); return; }
-  const res = await fetch("fonts/NotoSansJP-Regular.ttf");
+  if(JP_FONT_READY){ doc.setFont("NotoSansJP","normal"); return; }
+  const res = await fetch("fonts/NotoSansJP-Regular.ttf",{cache:"reload"});
   const buf = await res.arrayBuffer();
   const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
   doc.addFileToVFS("NotoSansJP-Regular.ttf", b64);
   doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
   doc.setFont("NotoSansJP","normal");
-  JP_FONT_READY = true;
+  JP_FONT_READY=true;
 }
-  
-const fmt=new Intl.NumberFormat("ja-JP");const $=id=>document.getElementById(id);
 
 /* セレクト生成 */
 (()=>{for(let i=1;i<=120;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===60)op.selected=true;$("months").appendChild(op);}for(let i=0;i<=4;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===2)op.selected=true;$("bonusTimes").appendChild(op);}})();
@@ -309,31 +309,28 @@ function compute(){
   const dl=$("download"); dl.disabled=false;
   dl.onclick=()=>{const a=document.createElement("a");a.href=url;a.download="car_loan_schedule.csv";a.click();};
 
-  // PDF（サマリー + 罫線表／自動ページ分割）
+  // PDF（サマリー + 罫線表／日本語フォント埋め込み）
   const pdfBtn=$("pdf"); pdfBtn.disabled=false;
- 　　pdfBtn.onclick = async () => {
+  pdfBtn.onclick=async()=>{
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("p","mm","a4");
-
-     // ←ここで日本語フォントを有効化
- 　 await useJPFont(doc);
+    await useJPFont(doc); // ★日本語フォント適用
 
     // 1ページ目：タイトル & サマリー
     doc.setFontSize(16);
-  　doc.text("自動車ローン シミュレーター 結果レポート", 14, 20);
+    doc.text("自動車ローン シミュレーター 結果レポート", 14, 18);
     doc.setDrawColor(15,23,42); doc.line(14, 20, 196, 20);
 
     doc.setFontSize(12);
     let y=30;
-    doc.text(`借入額: ${document.getElementById("loan").textContent} 円`, 14, 35);
+    doc.text(`借入額: ${$("loan").textContent} 円`, 14, y); y+=8;
     doc.text(`毎月返済（通常月）: ${$("monthly").textContent} 円`, 14, y); y+=8;
     doc.text(`総支払額（残価含む）: ${$("total").textContent} 円`, 14, y); y+=8;
-    doc.text(`利息総額: ${$("interest").textContent} 円`, 14, y); y+=12;
+    doc.text(`利息総額: ${$("interest").textContent} 円`, 14, y); y+=10;
 
     doc.setFontSize(12);
-    doc.text("入力条件", 14, y); y+=6;
-    doc.setFontSize(10);
-    const lines=[
+    doc.text("入力条件", 14, y); y+=6; doc.setFontSize(10);
+    [
       `車両価格：${fmt.format(+($("price").value||0))} 円`,
       `支払い総額：${fmt.format(+($("totalCost").value||0))} 円`,
       `頭金：${fmt.format(+($("down").value||0))} 円`,
@@ -346,24 +343,28 @@ function compute(){
       `方式：${document.querySelector('input[name="bonusMode"]:checked')?.value==="add"?"加算額":"ボーナス月総額"}`,
       `加算額：${fmt.format(+($("bonusAmt").value||0))} 円`,
       `ボーナス月総額：${fmt.format(+($("bonusTotal").value||0))} 円`
-    ];
-    lines.forEach(t=>{ doc.text(t, 16, y); y+=6; });
+    ].forEach(t=>{ doc.text(t, 16, y); y+=6; });
 
     // 2ページ目以降：返済明細（autotable）
- 　 doc.addPage();
- 　 doc.autoTable({
-   　 head: [["#","返済額","利息","元金","ボーナス","残高"]],
-   　 body: Array.from(document.querySelectorAll("#tbody tr"))
-          .map(tr => [...tr.children].map(td=>td.textContent)),
-    　startY: 16,
-   　 margin: { left: 12, right: 12 },
-   　 styles: { font: "NotoSansJP", fontSize: 9, cellPadding: 2, halign: "right" },
-  　  headStyles: { font: "NotoSansJP", fillColor:[15,23,42], textColor:255, halign:"center" },
-  　  columnStyles: { 0:{halign:"center"} }
-　  });
+    doc.addPage();
+    const headers=[["#","返済額","利息","元金","ボーナス","残高"]];
+    const body=[];
+    document.querySelectorAll("#tbody tr").forEach(tr=>{
+      body.push([...tr.children].map(td=>td.textContent));
+    });
 
- 　 doc.save("car_loan_report.pdf");
-　};
+    doc.autoTable({
+      head: headers,
+      body,
+      startY: 16,
+      margin: { left: 12, right: 12 },
+      styles: { font: "NotoSansJP", fontSize: 9, cellPadding: 2, halign: "right" },
+      headStyles: { font: "NotoSansJP", fillColor:[15,23,42], textColor:255, halign:"center" },
+      columnStyles: { 0:{halign:"center"} }
+    });
+
+    doc.save("car_loan_report.pdf");
+  };
 }
 
 /* 初期化 */
