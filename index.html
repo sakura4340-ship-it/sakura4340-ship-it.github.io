@@ -421,6 +421,19 @@ document.getElementById("diag").onclick = async () => {
   }
 };
 </script>
+<button id="pdf-font-test" style="position:fixed;right:12px;bottom:60px;padding:8px 10px;border-radius:8px;border:1px solid #444;background:#2f4;color:#fff;z-index:99999;">日本語PDFテスト</button>
+<script>
+document.getElementById("pdf-font-test").onclick = async () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const ok = await useJPFont(doc);
+  doc.setFont(ok ? "NotoSansJP" : "helvetica", "normal");
+  doc.setFontSize(14);
+  doc.text("日本語テスト：自動車ローン／総支払額／残価・毎月返済", 14, 20);
+  doc.text("漢字ひらがなカタカナ：東京都 大阪府 札幌市 令和七年", 14, 30);
+  doc.save("jp-font-test.pdf");
+};
+</script>
 
 </body>
 </html>
