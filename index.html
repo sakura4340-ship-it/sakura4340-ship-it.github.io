@@ -365,10 +365,17 @@ function compute(){
       const fontOK = await useJPFont(doc); // 日本語フォント（失敗でも続行）
       doc.setFont(fontOK ? "NotoSansJP" : "helvetica", "normal"); // ★必ず指定
 
+       ★ここから2行追加：タイトルだけBold
+     const boldOK = await useJPBold(doc);
+     doc.setFont("NotoSansJP", boldOK ? "bold" : "normal");
+
       // 1ページ目：タイトル & サマリー
       doc.setFontSize(16);
       doc.text("自動車ローン シミュレーター 結果レポート", 14, 18);
       doc.setDrawColor(15,23,42); doc.line(14, 20, 196, 20);
+
+      // ★太字を通常に戻す
+     doc.setFont("NotoSansJP","normal");
 
       doc.setFontSize(12);
       let y=30;
