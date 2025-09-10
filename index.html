@@ -142,33 +142,6 @@ const fmt=new Intl.NumberFormat("ja-JP");const $=id=>document.getElementById(id)
 let JP_FONT_READY=false;
 async function useJPFont(doc){
   if(JP_FONT_READY){ doc.setFont("NotoSansJP","normal"); return true; }
-
-  // ★ここに追加する
-async function useJPBold(doc){
-  try{
-    const res = await fetch("fonts/NotoSansJP-Bold.ttf?v=1011", { cache: "reload" });
-    if(!res.ok) return false;
-
-    const buf = await res.arrayBuffer();
-    function ab2b64(ab){
-      const bytes = new Uint8Array(ab), chunk = 0x8000;
-      let bin = "";
-      for(let i=0;i<bytes.length;i+=chunk){
-        bin += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
-      }
-      return btoa(bin);
-    }
-    const b64 = ab2b64(buf);
-
-    doc.addFileToVFS("NotoSansJP-Bold.ttf", b64);
-    doc.addFont("NotoSansJP-Bold.ttf", "NotoSansJP", "bold");
-    return true;
-  }catch(e){
-    console.warn("[PDF] Bold読み込み失敗:", e);
-    return false;
-  }
-}
-  
   try{
     // SW/キャッシュ対策でバージョンパラメータ付与
     const res = await fetch("fonts/NotoSansJP-Regular.ttf?v=999",{cache:"reload"});
@@ -196,6 +169,32 @@ async function useJPBold(doc){
   }catch(e){
     console.warn("[PDF] 日本語フォント読込失敗:", e);
     return false; // 失敗してもPDFは続行（英数フォント）
+  }
+}
+
+    // ★ここに追加する
+async function useJPBold(doc){
+  try{
+    const res = await fetch("fonts/NotoSansJP-Bold.ttf?v=1011", { cache: "reload" });
+    if(!res.ok) return false;
+
+    const buf = await res.arrayBuffer();
+    function ab2b64(ab){
+      const bytes = new Uint8Array(ab), chunk = 0x8000;
+      let bin = "";
+      for(let i=0;i<bytes.length;i+=chunk){
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+      }
+      return btoa(bin);
+    }
+    const b64 = ab2b64(buf);
+
+    doc.addFileToVFS("NotoSansJP-Bold.ttf", b64);
+    doc.addFont("NotoSansJP-Bold.ttf", "NotoSansJP", "bold");
+    return true;
+  }catch(e){
+    console.warn("[PDF] Bold読み込み失敗:", e);
+    return false;
   }
 }
 
@@ -362,10 +361,12 @@ function compute(){
       }
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF("p","mm","a4");
-      const fontOK = await useJPFont(doc); // 日本語フォント（失敗でも続行）
-      doc.setFont(fontOK ? "NotoSansJP" : "helvetica", "normal"); // ★必ず指定
+      
+        // 日本語フォント（通常）
+      const fontOK = await useJPFont(doc);
+      doc.setFont(fontOK ? "NotoSansJP" : "helvetica", "normal");
 
-       ★ここから2行追加：タイトルだけBold
+       // ★ここから2行追加：タイトルだけBold
      const boldOK = await useJPBold(doc);
      doc.setFont("NotoSansJP", boldOK ? "bold" : "normal");
 
