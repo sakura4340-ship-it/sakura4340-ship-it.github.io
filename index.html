@@ -142,6 +142,33 @@ const fmt=new Intl.NumberFormat("ja-JP");const $=id=>document.getElementById(id)
 let JP_FONT_READY=false;
 async function useJPFont(doc){
   if(JP_FONT_READY){ doc.setFont("NotoSansJP","normal"); return true; }
+
+  // ★ここに追加する
+async function useJPBold(doc){
+  try{
+    const res = await fetch("fonts/NotoSansJP-Bold.ttf?v=1011", { cache: "reload" });
+    if(!res.ok) return false;
+
+    const buf = await res.arrayBuffer();
+    function ab2b64(ab){
+      const bytes = new Uint8Array(ab), chunk = 0x8000;
+      let bin = "";
+      for(let i=0;i<bytes.length;i+=chunk){
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+      }
+      return btoa(bin);
+    }
+    const b64 = ab2b64(buf);
+
+    doc.addFileToVFS("NotoSansJP-Bold.ttf", b64);
+    doc.addFont("NotoSansJP-Bold.ttf", "NotoSansJP", "bold");
+    return true;
+  }catch(e){
+    console.warn("[PDF] Bold読み込み失敗:", e);
+    return false;
+  }
+}
+  
   try{
     // SW/キャッシュ対策でバージョンパラメータ付与
     const res = await fetch("fonts/NotoSansJP-Regular.ttf?v=999",{cache:"reload"});
