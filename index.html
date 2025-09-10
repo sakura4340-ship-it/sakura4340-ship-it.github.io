@@ -254,71 +254,7 @@ function compute(){
   // 返済起点残高＝ローン全額（残価はボトムに維持）
   let bal = loan;
 
-  let totalPay = 0;
-  let totalInt = 0;
-  const tb = $("tbody"); tb.innerHTML = "";
-
-  const interval = bonusTimes>0 ? Math.max(1, Math.round(12/bonusTimes)) : 0;
-
-  for (let i=1;i<=months;i++){
-  const interest = Math.round(bal * r);
-
-  // その月の“希望”支払額（ボーナス反映後）
-  let basePay = monthly;
-  let bonus = 0;
-  const isBonus = (bonusTimes>0) && (i % Math.max(1, Math.round(12/bonusTimes)) === 0);
-
-  if (isBonus){
-    if (mode === "add"){ bonus = bonusAmt; }      // 通常月 + 加算額
-    else { basePay = bonusTotal; }                // 総額指定
-  }
-  const payDesired = Math.max(0, Math.round(mode==="add" ? (basePay + bonus) : basePay));
-
-  // この月に減らせる元金の上限＝現在残高 − 残価（これ未満にはしない）
-  const maxPrincipal = Math.max(0, bal - effectiveResidual);
-
-  // “希望額”で計算した元金
-  let principal = Math.max(0, payDesired - interest);
-
-  // 期間固定：残価（または0）を割らないように元金を上限でクリップ
-  if (principal > maxPrincipal) principal = maxPrincipal;
-  principal = Math.round(principal);
-
-  // 実際の請求額＝利息＋（許容範囲までの元金）
-  const payActual = interest + principal;
-
-  // 残高更新（下限＝残価）
-  bal = Math.round(bal - principal);
-
-  // 集計は“実際に請求した額”で
-  totalPay += payActual;
-  totalInt += interest;
-
-  // 表示用ボーナス（実支払ベース）
-  const shownBonus = isBonus
-    ? (mode === "add" ? Math.max(0, payActual - monthly) : Math.max(0, payActual - monthly))
-    : 0;
-
-  // 明細行
-  const tr = document.createElement("tr");
-  tr.innerHTML = `<td>${i}</td>
-    <td>${fmt.format(payActual)}</td>
-    <td>${fmt.format(interest)}</td>
-    <td>${fmt.format(principal)}</td>
-    <td>${fmt.format(shownBonus)}</td>
-    <td>${fmt.format(Math.max(0, bal))}</td>`;
-  tb.appendChild(tr);
-}
-
   
-  // 満期：残価の精算を合算（明細にも1行追加）
-  let grandTotal = totalPay;
-  if(effectiveResidual > 0){
-    grandTotal += effectiveResidual;
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>満期</td><td>${fmt.format(effectiveResidual)}</td><td>—</td><td>—</td><td>—</td><td>0</td>`;
-    tb.appendChild(tr);
-  }
 
   $("loan").textContent    = fmt.format(loan);
   $("monthly").textContent = fmt.format(monthly);   // UI表示は切り上げ後の一定額
@@ -340,7 +276,100 @@ function compute(){
   $("pdf").disabled=false;
 }
 
+const tb = $("tbody"); tb.innerHTML = "";
+let totalPay = 0;
+let totalInt = 0;
 
+// ボーナス間隔（年回数 1〜4 → おおよそ 12/回数）
+const interval = bonusTimes>0 ? Math.max(1, Math.round(12/bonusTimes)) : 0;
+
+for (let i=1; i<=months; i++){
+  // 利息（残高に対して）
+  const interest = Math.round(bal * r);
+
+  // この月の希望請求額（ボーナス反映後）
+  let basePay = monthly;
+  let bonus = 0;
+  const isBonus = interval && (i % interval) === 0;
+
+  if (isBonus){
+    if (mode === "add"){ bonus = bonusAmt; }    // 通常月 + 加算額
+    else { basePay = bonusTotal; }              // 総額指定
+  }
+  const payDesired = Math.max(0, Math.round(mode==="add" ? (basePay + bonus) : basePay));
+
+  // 希望額をそのまま請求（利息超過分はすべて元金に充当）
+  let principal = Math.max(0, payDesired - interest);
+
+  // 支払後の残高を先に試算
+  let nextBal = bal - principal;
+
+  // 残価に到達（＝それ以下）したら、この月で前倒し終了する
+  if (nextBal <= effectiveResidual){
+    // 最後の通常明細（希望額まるごと反映）
+    const payActual = payDesired;   // クリップしない
+    nextBal = bal - Math.max(0, payActual - interest); // 形式的に更新
+
+    totalPay += payActual;
+    totalInt += interest;
+
+    tb.insertAdjacentHTML("beforeend", `
+      <tr>
+        <td>${i}</td>
+        <td>${fmt.format(payActual)}</td>
+        <td>${fmt.format(interest)}</td>
+        <td>${fmt.format(Math.max(0, payActual - interest))}</td>
+        <td>${fmt.format(isBonus ? (mode==="add" ? bonus : Math.max(0, payActual - monthly)) : 0)}</td>
+        <td>${fmt.format(Math.max(0, nextBal))}</td>
+      </tr>`);
+
+    // 即座に「満期（前倒し）」行を追加して残価を精算し、終了
+    if (effectiveResidual > 0){
+      totalPay += effectiveResidual;
+      tb.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td>満期(前倒し)</td>
+          <td>${fmt.format(effectiveResidual)}</td>
+          <td>—</td><td>—</td><td>—</td><td>0</td>
+        </tr>`);
+    }
+
+    bal = 0; // 以後0として扱う
+    break;
+  }
+
+  // まだ残価より上：通常の明細を積み上げ
+  bal = Math.round(nextBal);
+  totalPay += payDesired;
+  totalInt += interest;
+
+  const shownBonus = isBonus
+    ? (mode==="add" ? bonus : Math.max(0, payDesired - monthly))
+    : 0;
+
+  tb.insertAdjacentHTML("beforeend", `
+    <tr>
+      <td>${i}</td>
+      <td>${fmt.format(payDesired)}</td>
+      <td>${fmt.format(interest)}</td>
+      <td>${fmt.format(principal)}</td>
+      <td>${fmt.format(shownBonus)}</td>
+      <td>${fmt.format(Math.max(0, bal))}</td>
+    </tr>`);
+}
+
+// もしループを完走（＝残価に届かなかった）した場合は、最後に満期で残価精算
+if (bal > 0 && effectiveResidual > 0){
+  totalPay += effectiveResidual;
+  tb.insertAdjacentHTML("beforeend", `
+    <tr>
+      <td>満期</td>
+      <td>${fmt.format(effectiveResidual)}</td>
+      <td>—</td><td>—</td><td>—</td><td>0</td>
+    </tr>`);
+}
+
+  
 /* ===== PDF出力（日本語Regular必須／Boldあれば太字） ===== */
 document.getElementById("pdf").addEventListener("click", async ()=>{
   try{
