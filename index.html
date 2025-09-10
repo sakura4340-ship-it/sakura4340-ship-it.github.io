@@ -138,46 +138,39 @@
 <script>
 const fmt=new Intl.NumberFormat("ja-JP");const $=id=>document.getElementById(id);
 
-/* 日本語フォントを jsPDF に登録して使う（失敗しても落とさない） */
+/* 日本語フォントを jsPDF に登録して使う（安全版：大容量TTF対応） */
 let JP_FONT_READY=false;
 async function useJPFont(doc){
-let JP_FONT_READY = false;
-async function useJPFont(doc){
-  if (JP_FONT_READY) { doc.setFont("NotoSansJP", "normal"); return true; }
-
-  try {
-    // キャッシュ回避の ?v=番号 を必ず付与
-    const res = await fetch("fonts/NotoSansJP-Regular.ttf?v=999", { cache: "reload" });
-    if (!res.ok) throw new Error("HTTP " + res.status);
+  if(JP_FONT_READY){ doc.setFont("NotoSansJP","normal"); return true; }
+  try{
+    // SW/キャッシュ対策でバージョンパラメータ付与
+    const res = await fetch("fonts/NotoSansJP-Regular.ttf?v=999",{cache:"reload"});
+    if(!res.ok) throw new Error("HTTP "+res.status);
 
     const buf = await res.arrayBuffer();
-
-    // 大きなTTFも安全にBase64変換
-    function ab2b64(arrayBuffer) {
-      const bytes = new Uint8Array(arrayBuffer);
-      const chunk = 0x8000; // 32KBずつ
-      let binary = "";
-      for (let i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    // 大きいTTFを分割してBase64へ
+    function ab2b64(ab){
+      const bytes = new Uint8Array(ab);
+      const chunk = 0x8000; // 32KB
+      let bin = "";
+      for(let i=0;i<bytes.length;i+=chunk){
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
       }
-      return btoa(binary);
+      return btoa(bin);
     }
     const b64 = ab2b64(buf);
 
-    // 登録名と setFont 名を一致させる！
+    // 登録名と setFont 名は一致させる
     doc.addFileToVFS("NotoSansJP-Regular.ttf", b64);
     doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
-    doc.setFont("NotoSansJP", "normal");
-
-    JP_FONT_READY = true;
+    doc.setFont("NotoSansJP","normal");
+    JP_FONT_READY=true;
     return true;
-  } catch (e) {
-    console.error("フォント読み込み失敗:", e);
-    return false;
+  }catch(e){
+    console.warn("[PDF] 日本語フォント読込失敗:", e);
+    return false; // 失敗してもPDFは続行（英数フォント）
   }
 }
-
-
 
 /* セレクト生成 */
 (()=>{for(let i=1;i<=120;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===60)op.selected=true;$("months").appendChild(op);}for(let i=0;i<=4;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===2)op.selected=true;$("bonusTimes").appendChild(op);}})();
@@ -343,9 +336,9 @@ function compute(){
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF("p","mm","a4");
       const fontOK = await useJPFont(doc); // 日本語フォント（失敗でも続行）
+      doc.setFont(fontOK ? "NotoSansJP" : "helvetica", "normal"); // ★必ず指定
 
       // 1ページ目：タイトル & サマリー
-      if(fontOK) doc.setFont("NotoSansJP","normal");
       doc.setFontSize(16);
       doc.text("自動車ローン シミュレーター 結果レポート", 14, 18);
       doc.setDrawColor(15,23,42); doc.line(14, 20, 196, 20);
@@ -356,13 +349,6 @@ function compute(){
       doc.text(`毎月返済（通常月）: ${$("monthly").textContent} 円`, 14, y); y+=8;
       doc.text(`総支払額（残価含む）: ${$("total").textContent} 円`, 14, y); y+=8;
       doc.text(`利息総額: ${$("interest").textContent} 円`, 14, y); y+=10;
-
-      if(!fontOK){
-        doc.setFontSize(10); doc.setTextColor(200,0,0);
-        doc.text("※ 日本語フォントが読めなかったため英数字フォントで出力しました。", 14, y); y+=8;
-        doc.text("fonts/NotoSansJP-Regular.ttf を /fonts 配下に置き、?v=再読込 してください。", 14, y);
-        doc.setTextColor(0,0,0);
-      }
 
       // 2ページ目：返済明細（autotable）
       doc.addPage();
@@ -382,8 +368,8 @@ function compute(){
         body,
         startY: 16,
         margin: { left: 12, right: 12 },
-        styles: { font: fontOK ? "NotoSansJP" : undefined, fontSize: 9, cellPadding: 2, halign: "right" },
-        headStyles: { font: fontOK ? "NotoSansJP" : undefined, fillColor:[15,23,42], textColor:255, halign:"center" },
+        styles: { font: fontOK ? "NotoSansJP" : "helvetica", fontSize: 9, cellPadding: 2, halign: "right" },
+        headStyles: { font: fontOK ? "NotoSansJP" : "helvetica", fillColor:[15,23,42], textColor:255, halign:"center" },
         columnStyles: { 0:{halign:"center"} }
       });
 
@@ -405,50 +391,7 @@ window.addEventListener("load", ()=>{
   compute();
 });
 </script>
-<!-- 診断ボタン（Console不要） -->
-<button id="diag" style="position:fixed;right:12px;bottom:12px;padding:10px 12px;border-radius:10px;border:1px solid #385; background:#1a2; color:#fff; z-index:9999;">
-  PDF診断
-</button>
-<script>
-document.getElementById("diag").onclick = async () => {
-  try{
-    // 1) jsPDF / autotable の読込状況
-    const hasJsPDF = !!(window.jspdf && window.jspdf.jsPDF);
-    const hasAT = !!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable);
-    // 2) フォント到達性
-    let fontStatus = "未確認";
-    try{
-      const r = await fetch("fonts/NotoSansJP-Regular.ttf", {cache:"reload"});
-      fontStatus = r.status + " (" + (r.ok ? "OK" : "NG") + ")";
-    }catch(e){
-      fontStatus = "ERROR: " + (e.message||e);
-    }
-    // 3) 結果表示
-    alert(
-      "[PDF診断結果]\n" +
-      "jsPDF: " + (hasJsPDF ? "OK" : "NG") + "\n" +
-      "autotable: " + (hasAT ? "OK" : "NG") + "\n" +
-      "フォント: " + fontStatus + "\n\n" +
-      "※ フォントが 200 OK でない場合は、/fonts/NotoSansJP-Regular.ttf の場所と名前を確認してね。"
-    );
-  }catch(e){
-    alert("診断エラー: " + (e.message||e));
-  }
-};
-</script>
-<button id="pdf-font-test" style="position:fixed;right:12px;bottom:60px;padding:8px 10px;border-radius:8px;border:1px solid #444;background:#2f4;color:#fff;z-index:99999;">日本語PDFテスト</button>
-<script>
-document.getElementById("pdf-font-test").onclick = async () => {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  const ok = await useJPFont(doc);
-  doc.setFont(ok ? "NotoSansJP" : "helvetica", "normal");
-  doc.setFontSize(14);
-  doc.text("日本語テスト：自動車ローン／総支払額／残価・毎月返済", 14, 20);
-  doc.text("漢字ひらがなカタカナ：東京都 大阪府 札幌市 令和七年", 14, 30);
-  doc.save("jp-font-test.pdf");
-};
-</script>
+
 
 </body>
 </html>
