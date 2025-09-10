@@ -296,7 +296,7 @@ function compute(){
     const pow = Math.pow(1+r, months);
     monthly = Math.round( r * (loan * pow - effectiveResidual) / (pow - 1) );
   }
-
+let bal = loan;
 // （★bal は①で「let bal = loan;」に修正済み。ここでは宣言しない）
 let totalPay = 0;
 let totalInt = 0;
