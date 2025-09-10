@@ -275,57 +275,81 @@ function compute(){
 
   const r = rate/100/12;
 
+ // 分割元本から控除する有効残価 = min(残価額, ローン金額)
   const effectiveResidual = Math.min(balloonAmt, loan);
   const financed = Math.max(loan - effectiveResidual, 0);
 
+  // 毎月返済（等額）を整数円に
   let monthly = 0;
   if (r === 0) monthly = Math.round(financed / months);
   else {
     const pow = Math.pow(1+r, months);
     monthly = Math.round(financed * (r*pow) / (pow-1));
   }
-
-  let bal = financed;
-  let totalPay = 0;
-  let totalInt = 0;
-  const tb = $("tbody"); tb.innerHTML = "";
-
-  const interval = bonusTimes>0 ? Math.max(1, Math.round(12/bonusTimes)) : 0;
-
-  for (let i=1;i<=months;i++){
-    const interest = Math.round(bal * r);
-
-    let basePay = monthly;
-    let bonus = 0;
-    const isBonus = interval && (i % interval) === 0;
-
-    if(isBonus){
-      if(mode==="add"){ bonus = bonusAmt; }
-      else{ basePay = bonusTotal; }
-    }
-
-    const pay = Math.round(mode==="add" ? (basePay + bonus) : basePay);
-
-    let principal = Math.min(bal, pay - interest);
-    if(principal < 0) principal = 0;
-    principal = Math.round(principal);
-
-    bal = Math.round(bal - principal);
-
-    totalPay += pay;
-    totalInt += interest;
-
-    const shownBonus = isBonus ? (mode==="add" ? bonus : Math.max(0, pay - monthly)) : 0;
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${i}</td>
-      <td>${fmt.format(pay)}</td>
-      <td>${fmt.format(interest)}</td>
-      <td>${fmt.format(principal)}</td>
-      <td>${fmt.format(shownBonus)}</td>
-      <td>${fmt.format(Math.max(0, bal))}</td>`;
-    tb.appendChild(tr);
+  const r = rate/100/12;
+  const effectiveResidual = Math.min(balloonAmt, loan); // 満期に残す金額
+  // 残価つきの等額返済（満期残高＝残価額になるPMT）
+  let monthly = 0;
+  if (r === 0) {
+    monthly = Math.round((loan - effectiveResidual) / months);
+  } else {
+    const pow = Math.pow(1+r, months);
+    monthly = Math.round( r * (loan * pow - effectiveResidual) / (pow - 1) );
   }
+
+// （★bal は①で「let bal = loan;」に修正済み。ここでは宣言しない）
+let totalPay = 0;
+let totalInt = 0;
+const tb = $("tbody"); tb.innerHTML = "";
+
+const interval = bonusTimes>0 ? Math.max(1, Math.round(12/bonusTimes)) : 0;
+
+for (let i=1;i<=months;i++){
+  const interest = Math.round(bal * r);
+
+  let basePay = monthly;
+  let bonus = 0;
+  const isBonus = interval && (i % interval) === 0;
+
+  if (isBonus){
+    if (mode === "add"){
+      bonus = bonusAmt;
+    } else {
+      basePay = bonusTotal; // 総額指定モード
+    }
+  }
+
+  const pay = Math.round(mode === "add" ? (basePay + bonus) : basePay);
+
+  // 利息は必ず支払う（極端な丸めで pay < interest になった場合の保険）
+  const adjPay = Math.max(pay, interest);
+
+  // この月に減らせる元金の上限＝現在残高 − 残価額（残価を下回らない）
+  const maxPrincipal = Math.max(0, bal - effectiveResidual);
+  let principal = Math.min(maxPrincipal, adjPay - interest);
+  principal = Math.round(Math.max(0, principal));
+
+  // 残高更新（残価を下限に維持）
+  bal = Math.round(bal - principal);
+
+  // 集計：実際に払った金額（adjPay）を足す
+  totalPay += adjPay;
+  totalInt += interest;
+
+  // 表示用のボーナス金額
+  const shownBonus = isBonus ? (mode === "add" ? bonus : Math.max(0, adjPay - monthly)) : 0;
+
+  // 明細行（返済額は adjPay を表示）
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td>${i}</td>
+    <td>${fmt.format(adjPay)}</td>
+    <td>${fmt.format(interest)}</td>
+    <td>${fmt.format(principal)}</td>
+    <td>${fmt.format(shownBonus)}</td>
+    <td>${fmt.format(Math.max(0, bal))}</td>`;
+  tb.appendChild(tr);
+}
+
 
   let grandTotal = totalPay;
   if(effectiveResidual > 0){
