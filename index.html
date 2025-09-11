@@ -291,9 +291,9 @@ function compute(){
   const bonusTotal = (bonusTimes===0)?0:Math.max(+($("bonusTotal").value||0),0);
 
   const r = rate/100/12;
-  const effectiveResidual = Math.min(balloonAmt, loan); // 満期に残す額
+  const effectiveResidual = Math.min(balloonAmt, loan); // 満期に残す額（下限）
 
-  // 残価つきPMT（端数は切り上げ：初回から利息割れを防止）
+  // 残価つきPMT（端数は切り上げ＝利息割れ防止）
   let monthlyFloat;
   if (r === 0){
     monthlyFloat = (loan - effectiveResidual) / months;
@@ -303,12 +303,82 @@ function compute(){
   }
   const monthly = Math.ceil(monthlyFloat);
 
-  // 返済はローン全額から開始（残価は下限）
+  // 以降、必ず「指定回数」回す（期間固定）
   let bal = loan;
+  const tb = $("tbody"); tb.innerHTML = "";
+  let totalPay = 0;
+  let totalInt = 0;
 
-  
+  // 年回数 1〜4 → おおよそ 12/回数（0ならボーナス無し）
+  const interval = bonusTimes>0 ? Math.max(1, Math.round(12/bonusTimes)) : 0;
 
-  // CSV（省略可）
+  for (let i=1; i<=months; i++){
+    const interest = Math.round(bal * r);
+
+    // その月の「希望請求額」（ボーナスを必ず反映）
+    let basePay = monthly;
+    let bonus = 0;
+    const isBonus = interval && (i % interval) === 0;
+    if (isBonus){
+      if (mode === "add") bonus = bonusAmt;   // 通常月＋加算
+      else basePay = bonusTotal;              // 総額指定
+    }
+    const payDesired = Math.max(0, Math.round(mode==="add" ? (basePay + bonus) : basePay));
+
+    // 期間固定のコア：この月に減らせる元金の上限＝現在残高 − 残価
+    const maxPrincipal = Math.max(0, bal - effectiveResidual);
+
+    // 希望額で計算した元金
+    let principal = Math.max(0, payDesired - interest);
+
+    // 上限超えはカット＝請求額を自動で小さくして残価割れを防ぐ
+    if (principal > maxPrincipal) principal = maxPrincipal;
+
+    // 実際に請求する額（利息＋クリップ後元金）
+    const payActual = interest + principal;
+
+    // 残高更新（残価が底）
+    bal = Math.round(bal - principal);
+
+    totalPay += payActual;
+    totalInt += interest;
+
+    // 表示用の“ボーナス額”（実請求ベースの差分）
+    const shownBonus = isBonus
+      ? Math.max(0, payActual - monthly)
+      : 0;
+
+    tb.insertAdjacentHTML("beforeend", `
+      <tr>
+        <td>${i}</td>
+        <td>${fmt.format(payActual)}</td>
+        <td>${fmt.format(interest)}</td>
+        <td>${fmt.format(principal)}</td>
+        <td>${fmt.format(shownBonus)}</td>
+        <td>${fmt.format(Math.max(0, bal))}</td>
+      </tr>
+    `);
+  }
+
+  // 満期で残価を精算（必ず最後に入れる）
+  if (effectiveResidual > 0){
+    totalPay += effectiveResidual;
+    tb.insertAdjacentHTML("beforeend", `
+      <tr>
+        <td>満期</td>
+        <td>${fmt.format(effectiveResidual)}</td>
+        <td>—</td><td>—</td><td>—</td><td>0</td>
+      </tr>
+    `);
+  }
+
+  // サマリー更新（ここで初めて表示へ反映）
+  $("loan").textContent    = fmt.format(loan);
+  $("monthly").textContent = fmt.format(monthly);
+  $("total").textContent   = fmt.format(totalPay);
+  $("interest").textContent= fmt.format(totalInt);
+
+  // CSV（必要なら）
   const rows=[["#","返済額","利息","元金","ボーナス","残高"]];
   document.querySelectorAll("#tbody tr").forEach(tr=>{
     rows.push([...tr.children].map(td=>td.textContent.replace(/,/g,"")));
@@ -321,6 +391,9 @@ function compute(){
 
   $("pdf").disabled=false;
 }
+
+
+
 
 const tb = $("tbody"); tb.innerHTML = "";
 let totalPay = 0;
