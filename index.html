@@ -287,6 +287,7 @@ function compute(){
     totalInt += interest;
 
     // ★ 早期終了判定：残価に到達（＝それ以下）したらこの月で前倒し完了
+    /*
     if(nextBal <= residual){
       if(residual > 0){
         totalPay += residual;
@@ -301,6 +302,7 @@ function compute(){
       bal = 0;
       break;
     }
+    */
 
     // 継続
     bal = Math.round(nextBal);
