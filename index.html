@@ -236,59 +236,73 @@ function compute(){
   const bonusAmt   = (bonusTimes===0)?0:Math.max(+($("bonusAmt").value||0),0);
   const bonusTotal = (bonusTimes===0)?0:Math.max(+($("bonusTotal").value||0),0);
 
-  const r = rate/100/12;
-  const residual = Math.min(balloonAmt, loan); // 満期精算する残価
+  // 事前計算
+const r = rate/100/12;
+const residual = Math.min(balloonAmt, loan);
 
-  // PMT（満期に residual を残す）。初回から利息割れしないよう切り上げ
-  let monthlyFloat;
-  if (r===0){ monthlyFloat = (loan - residual)/months; }
-  else{
-    const pow=Math.pow(1+r, months);
-    monthlyFloat = (r*(loan*pow - residual))/(pow-1);
-  }
-  const monthly = Math.ceil(monthlyFloat);
+// PMT（満期に residual を残す、利息割れ防止で切り上げ）
+let monthly;
+if (r === 0){
+  monthly = Math.ceil((loan - residual) / months);
+} else {
+  const pow = Math.pow(1+r, months);
+  monthly = Math.ceil( (r * (loan * pow - residual)) / (pow - 1) );
+}
 
-  // 明細描画準備
-  const tb=$("tbody"); tb.innerHTML="";
- 
-// ループ直前（そのまま）
+// 表をクリア
+const tb = $("tbody"); tb.innerHTML = "";
+
+// 返済（必ず months 回／早期終了しない）
 let bal = loan;
 let totalPay = 0;
 let totalInt = 0;
 
-// ボーナス間隔
+// ボーナス間隔（年1〜4回 → だいたい 12/回）
 const interval = bonusTimes>0 ? Math.max(1, Math.round(12/bonusTimes)) : 0;
 
 for (let i=1; i<=months; i++){
   const interest = Math.round(bal * r);
 
-  // この月の請求額（ボーナス必ず反映）
+  // === 今月の請求額（ボーナスを必ず反映） ===
   let basePay = monthly;
-  let bonus = 0;
-  const isBonus = interval && (i % interval) === 0;
+  let isBonus = interval && (i % interval) === 0;
+  let payDesired;
+
   if (isBonus){
-    if (mode === "add") bonus = bonusAmt;   // 通常月＋加算
-    else basePay = bonusTotal;              // 総額指定
+    if (mode === "add"){
+      // 通常月＋加算
+      payDesired = Math.max(0, Math.round(basePay + bonusAmt));
+    } else {
+      // 総支払額で指定：通常月未満は禁止＋利息割れ禁止
+      const bt = Math.max(0, Math.round(bonusTotal));
+      payDesired = Math.max(bt, basePay, interest);
+    }
+  } else {
+    // 通常月：利息割れ禁止（理論上 monthly>=interest だが安全のため）
+    payDesired = Math.max(basePay, interest);
   }
-  const pay = Math.max(0, Math.round(mode==="add" ? (basePay + bonus) : basePay));
 
   // 希望元金
-  const desiredPrincipal = Math.max(0, pay - interest);
+  const desiredPrincipal = Math.max(0, payDesired - interest);
 
-  // ★途中月は残価を割らない（早期終了させない）
-  const maxPrincipal = Math.max(0, bal - residual);  // residual = Math.min(balloonAmt, loan)
+  // === 元金クリップ：残価未満に落とさない ===
+  // ・最終回でも残価は残す（＝ここでクリップする）
+  const maxPrincipal = Math.max(0, bal - residual);
   const principal = Math.min(desiredPrincipal, maxPrincipal);
 
-  bal -= principal; // ここでは残価未満にしない
-  totalPay += pay;
+  // 残高更新（必ず residual 以上に保つ）
+  bal = bal - principal;
+
+  totalPay += payDesired;
   totalInt += interest;
 
-  const shownBonus = isBonus ? (mode==="add" ? bonus : Math.max(0, pay - monthly)) : 0;
+  // 表示用の“ボーナス”欄（請求額－通常月相当）
+  const shownBonus = isBonus ? Math.max(0, payDesired - monthly) : 0;
 
   tb.insertAdjacentHTML("beforeend", `
     <tr>
       <td>${i}</td>
-      <td>${fmt.format(pay)}</td>
+      <td>${fmt.format(payDesired)}</td>
       <td>${fmt.format(interest)}</td>
       <td>${fmt.format(principal)}</td>
       <td>${fmt.format(shownBonus)}</td>
@@ -297,6 +311,15 @@ for (let i=1; i<=months; i++){
   `);
 }
 
+// ★満期行は追加しません（＝60回目で終了し、残高として“残価”が残る）
+
+// サマリー更新
+$("loan").textContent    = fmt.format(loan);
+$("monthly").textContent = fmt.format(monthly);
+$("total").textContent   = fmt.format(totalPay);
+$("interest").textContent= fmt.format(totalInt);
+
+  
 // ★満期精算：設定残価ではなく「実残高」をまるごと精算
 const maturityDue = Math.max(0, Math.round(bal));
 if (maturityDue > 0){
@@ -310,11 +333,7 @@ if (maturityDue > 0){
   `);
 }
 
-// サマリー更新
-$("loan").textContent    = fmt.format(loan);
-$("monthly").textContent = fmt.format(monthly);
-$("total").textContent   = fmt.format(totalPay);
-$("interest").textContent= fmt.format(totalInt);
+
 
 
 
