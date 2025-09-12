@@ -250,81 +250,73 @@ function compute(){
 
   // 明細描画準備
   const tb=$("tbody"); tb.innerHTML="";
-  let bal=loan, totalPay=0, totalInt=0;
+ 
+// ループ直前（そのまま）
+let bal = loan;
+let totalPay = 0;
+let totalInt = 0;
 
-  // ボーナス間隔（年回数 1〜4 → おおよそ 12/回）
-  const interval = bonusTimes>0 ? Math.max(1, Math.round(12/bonusTimes)) : 0;
+// ボーナス間隔
+const interval = bonusTimes>0 ? Math.max(1, Math.round(12/bonusTimes)) : 0;
 
-  for(let i=1;i<=months;i++){
-    const interest = Math.round(bal*r);
+for (let i=1; i<=months; i++){
+  const interest = Math.round(bal * r);
 
-    // ★ ボーナスは請求額に必ず反映（額はそのまま使う、調整しない）
-    let basePay = monthly, bonus = 0;
-    const isBonus = interval && (i % interval) === 0;
-    if(isBonus){
-      if(mode==="add") bonus = bonusAmt;   // 通常月＋加算
-      else basePay = bonusTotal;           // 総額指定
-    }
-    const pay = Math.max(0, Math.round(mode==="add" ? (basePay+bonus) : basePay));
-
-    // 今月の元金充当（カットしない）
-    const principal = Math.max(0, pay - interest);
-    const nextBal   = bal - principal;
-
-    // 表描画（この月の請求は“そのまま”）
-    tb.insertAdjacentHTML("beforeend", `
-      <tr>
-        <td>${i}</td>
-        <td>${fmt.format(pay)}</td>
-        <td>${fmt.format(interest)}</td>
-        <td>${fmt.format(principal)}</td>
-        <td>${fmt.format(isBonus ? (mode==="add"? bonus : Math.max(0, pay - monthly)) : 0)}</td>
-        <td>${fmt.format(Math.max(0, Math.round(nextBal)))}</td>
-      </tr>
-    `);
-
-    totalPay += pay;
-    totalInt += interest;
-
-    // ★ 早期終了判定：残価に到達（＝それ以下）したらこの月で前倒し完了
-    /*
-    if(nextBal <= residual){
-      if(residual > 0){
-        totalPay += residual;
-        tb.insertAdjacentHTML("beforeend", `
-          <tr>
-            <td>満期(前倒し)</td>
-            <td>${fmt.format(residual)}</td>
-            <td>—</td><td>—</td><td>—</td><td>0</td>
-          </tr>
-        `);
-      }
-      bal = 0;
-      break;
-    }
-    */
-
-    // 継続
-    bal = Math.round(nextBal);
+  // この月の請求額（ボーナス必ず反映）
+  let basePay = monthly;
+  let bonus = 0;
+  const isBonus = interval && (i % interval) === 0;
+  if (isBonus){
+    if (mode === "add") bonus = bonusAmt;   // 通常月＋加算
+    else basePay = bonusTotal;              // 総額指定
   }
+  const pay = Math.max(0, Math.round(mode==="add" ? (basePay + bonus) : basePay));
 
-  // ループ完走＝残価に届かなかった場合、最後に満期精算
-  if(bal > 0 && residual > 0){
-    totalPay += residual;
-    tb.insertAdjacentHTML("beforeend", `
-      <tr>
-        <td>満期</td>
-        <td>${fmt.format(residual)}</td>
-        <td>—</td><td>—</td><td>—</td><td>0</td>
-      </tr>
-    `);
-  }
+  // 希望元金
+  const desiredPrincipal = Math.max(0, pay - interest);
 
-  // サマリー
-  $("loan").textContent    = fmt.format(loan);
-  $("monthly").textContent = fmt.format(monthly);
-  $("total").textContent   = fmt.format(totalPay);
-  $("interest").textContent= fmt.format(totalInt);
+  // ★途中月は残価を割らない（早期終了させない）
+  const maxPrincipal = Math.max(0, bal - residual);  // residual = Math.min(balloonAmt, loan)
+  const principal = Math.min(desiredPrincipal, maxPrincipal);
+
+  bal -= principal; // ここでは残価未満にしない
+  totalPay += pay;
+  totalInt += interest;
+
+  const shownBonus = isBonus ? (mode==="add" ? bonus : Math.max(0, pay - monthly)) : 0;
+
+  tb.insertAdjacentHTML("beforeend", `
+    <tr>
+      <td>${i}</td>
+      <td>${fmt.format(pay)}</td>
+      <td>${fmt.format(interest)}</td>
+      <td>${fmt.format(principal)}</td>
+      <td>${fmt.format(shownBonus)}</td>
+      <td>${fmt.format(Math.max(0, Math.round(bal)))}</td>
+    </tr>
+  `);
+}
+
+// ★満期精算：設定残価ではなく「実残高」をまるごと精算
+const maturityDue = Math.max(0, Math.round(bal));
+if (maturityDue > 0){
+  totalPay += maturityDue;
+  tb.insertAdjacentHTML("beforeend", `
+    <tr>
+      <td>満期</td>
+      <td>${fmt.format(maturityDue)}</td>
+      <td>—</td><td>—</td><td>—</td><td>0</td>
+    </tr>
+  `);
+}
+
+// サマリー更新
+$("loan").textContent    = fmt.format(loan);
+$("monthly").textContent = fmt.format(monthly);
+$("total").textContent   = fmt.format(totalPay);
+$("interest").textContent= fmt.format(totalInt);
+
+
 
   // CSV
   const rows=[["#","返済額","利息","元金","ボーナス","残高"]];
