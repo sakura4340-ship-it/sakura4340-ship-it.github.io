@@ -284,12 +284,50 @@
     return Math.round(val/u)*u; // nearest（既定）
   }
 
+  // 実質年率は小数点「.」のみ許可（全角→半角変換・複数ドット禁止・e/+/−/カンマ禁止）
+  function enforceDotDecimalOnly(input){
+    const toHalfWidth = (s)=> s
+      .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xFF10+48))
+      .replace(/[．｡]/g, '.')
+      .replace(/[，、､]/g, '');
+    const sanitize = ()=>{
+      let v = toHalfWidth(input.value);
+      v = v.replace(/[^0-9.]/g, '');
+      const i = v.indexOf('.');
+      if(i !== -1){ v = v.slice(0, i+1) + v.slice(i+1).replace(/\./g, ''); }
+      input.value = v;
+    };
+    input.addEventListener('beforeinput', (e)=>{
+      if(e.inputType === 'insertText' && e.data){
+        const d = toHalfWidth(e.data);
+        if(!/^[0-9.]$/.test(d)) { e.preventDefault(); return; }
+        if(d === '.' && input.value.includes('.')) { e.preventDefault(); return; }
+      }
+    });
+    input.addEventListener('keydown', (e)=>{
+      const ok = new Set(['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End','Enter']);
+      if(ok.has(e.key)) return;
+      if(/^[0-9.]$/.test(e.key)){
+        if(e.key === '.' && input.value.includes('.')) e.preventDefault();
+        return;
+      }
+      // ブロック（e,+,-,カンマなど）
+      e.preventDefault();
+    });
+    input.addEventListener('paste', ()=> setTimeout(sanitize, 0));
+    input.addEventListener('input', sanitize);
+    input.addEventListener('change', sanitize);
+    sanitize();
+  }
+
   // Elements
   const priceEl = document.getElementById('price');
   const feesEl = document.getElementById('fees');
   const downEl = document.getElementById('down');
   const tradeinEl = document.getElementById('tradein');
   const rateEl = document.getElementById('rate');
+  // 実質年率は小数点「.」のみ許可
+  enforceDotDecimalOnly(rateEl);
   const monthsEl = document.getElementById('months');
   const startMonthEl = document.getElementById('startMonth');
   const bonusAmountEl = document.getElementById('bonusAmount');
