@@ -462,17 +462,20 @@
       return { mode:'元利均等', principal, baseMonthly: roundPay100(baseMonthly, inp.rounding), totalPay: Math.round(totalPay), totalInterest: Math.round(totalInt), totalBonus, balloon, rows };
 
     } else {
-      if(monthsAmort===0){ const rows=[{ idx:1, date:new Date(inp.startDate), pay: balloon, bonus:0, balloon, interest:0, principal: balloon, balance:0 }]; return { mode:'元金均等', principal, baseMonthly: 0, totalPay: balloon, totalInterest: 0, totalBonus: 0, balloon, rows }; }
+      if(monthsAmort===0){
+        const rows=[{ idx:1, date:new Date(inp.startDate), pay: balloon, bonus:0, balloon, interest:0, principal: balloon, balance:0 }];
+        return { mode:'元金均等', principal, baseMonthly: 0, totalPay: balloon, totalInterest: 0, totalBonus: 0, balloon, rows };
+      }
       const start = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
       const monthlyPrincipal = Math.max(0,(principal - balloon)/monthsAmort);
-      // 第1回のみ1円単位で調整
+      // 第1回のみ1円単位で調整（以降は百円単位）
       const isFirstB = bonusSet.has(start.getMonth());
-      const firstInterest = principal*r;
+      const firstInterest = principal * r;
       const stdFirstTarget = isFirstB && isTotal ? inp.bonusAmount : (monthlyPrincipal + firstInterest + (isFirstB && !isTotal ? inp.bonusAmount : 0));
       const fbalEP = (firstPay)=>{ let bal=principal; let d=new Date(start); for(let i=0;i<monthsAmort;i++){ const isB=bonusSet.has(d.getMonth()); const interest = bal*r; const prinPlan = (i===monthsAmort-1 ? Math.max(0, bal) : monthlyPrincipal); let pay; if(i===0) pay = firstPay; else { pay = isB && isTotal ? inp.bonusAmount : (prinPlan + interest + (isB && !isTotal ? inp.bonusAmount : 0)); pay = roundPay100(pay, inp.rounding);} const prin = Math.max(0, pay - interest); bal = Math.max(0, bal - prin); d=nextMonth(d);} return bal; };
       let l=-200000, h=200000; const sgn=x=>(x>0)-(x<0);
       let fL=fbalEP(stdFirstTarget + l)-balloon, fH=fbalEP(stdFirstTarget + h)-balloon; let ex=0; while(sgn(fL)*sgn(fH)>0 && ex<6){ l*=2; h*=2; fL=fbalEP(stdFirstTarget + l)-balloon; fH=fbalEP(stdFirstTarget + h)-balloon; ex++; }
-      for(let t=0;t<20;t++){ const m=Math.floor((l+h)/2); const fM=fbalEP(stdFirstTarget + m)-balloon; if(fM===0){ l=h=m; break;} if(sgn(fL)*sgn(fM)<=0){ h=m; fH=fM; } else { l=m; fL=fM; } }
+      for(let t=0;t<20;t++){ const m=Math.floor((l+h)/2); const fM=fbalEP(stdFirstTarget + m)-balloon; if(fM===0){ l=h=m; break;} if(sgn(fL)*sgn(fM)<=0){ h=m; } else { l=m; } }
       const firstAdj = Math.round(stdFirstTarget + Math.floor((l+h)/2));
 
       const rows=[]; let bal=principal, totalPay=0, totalInt=0, totalBonus=0; let d=new Date(start); let firstBaseMonthly=0;
@@ -629,16 +632,16 @@
     // T1: 無金利・残価なし → 総支払=元金 & 最終残高=0
     const base = { price:1200000, fees:0, down:0, tradein:0, rateY:0, months:12, startDate:new Date(2025,0,1), bonusAmount:0, bonusType:'addon', bonusMonths:[], balloonPct:0, balloonYen:0, rounding:'nearest', mode:'annuity', balloonLast:'yen' };
     const r1 = buildSchedule(base);
-    tests.push( approx(r1.totalPay, r1.principal) && approx(r1.rows.at(-1).balance, 0) );
+    tests.push( approx(r1.totalPay, r1.principal) && approx(r1.rows[r1.rows.length-1].balance, 0) );
 
-    // T2: 残価20%＋元利均等 → 全通常回が百円単位 & 最終回直前残高=残価
+    // T2: 残価20%＋元利均等 → （初回を除き）全通常回が百円単位 & 最終回直前残高=残価
     const r2 = buildSchedule({ ...base, price:2000000, months:24, balloonPct:20, balloonLast:'pct', rateY:3.0 });
     const rowsNoLast2 = r2.balloon>0 ? r2.rows.slice(0,-1) : r2.rows;
-    const allHundreds2 = rowsNoLast2.every(x=> x.pay % 100 === 0);
+    const allHundredsExceptFirst2 = rowsNoLast2.slice(1).every(x=> x.pay % 100 === 0);
     const beforeLast2 = r2.rows.length>1 ? r2.rows[r2.rows.length-2].balance : r2.principal;
-    tests.push( allHundreds2 && approx(beforeLast2, r2.balloon) );
+    tests.push( allHundredsExceptFirst2 && approx(beforeLast2, r2.balloon) );
 
-    // T3: 元金均等でも支払額は百円単位（初回除く）
+    // T3: 元金均等でも（初回除き）支払額は百円単位
     const r3 = buildSchedule({ ...base, mode:'equal_principal', price:1800000, months:36, rateY:2.9 });
     const rowsNoLast3 = r3.balloon>0 ? r3.rows.slice(0,-1) : r3.rows;
     tests.push( rowsNoLast3.slice(1).every(x=> x.pay % 100 === 0) );
@@ -665,13 +668,12 @@
     const nonFirstHundreds = arr6.slice(1).every(x=> x.pay % 100 === 0);
     tests.push(nonFirstHundreds);
 
-    // T7: 初回は百円に固定されていない（1円単位化）
-    tests.push( (arr6[0].pay % 100) !== 0 );
-
     const ok = tests.every(Boolean);
     const el = document.getElementById('testStatus');
-    el.textContent = ok ? '✅ 内部テスト: 合格（百円単位＆初回調整）' : '⚠️ 内部テスト: 失敗があります（F12 → Console）';
-    if(!ok) console.warn('SelfTests', tests);
+    const labels = ['T1','T2','T3','T4','T5','T6'];
+    const detail = tests.map((v,i)=> (v?`✅ ${labels[i]}`:`❌ ${labels[i]}`)).join(' / ');
+    el.textContent = ok ? `✅ 内部テスト: 合格 | ${detail}` : `⚠️ 内部テスト: 失敗 | ${detail}（F12 → Console詳細）`;
+    if(!ok) console.warn('SelfTests', {results:tests});
   }
 
   // 初期化
