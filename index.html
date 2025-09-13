@@ -3,184 +3,501 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>自動車ローン シミュレーター</title>
+<title>自動車ローン シミュレーターPRO（フルHTML・オフラインOK）</title>
 <meta name="theme-color" content="#0f172a" />
-<link rel="apple-touch-icon" href="icon-180.png" />
-<link rel="icon" href="favicon.ico" type="image/x-icon" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%230ea5e9' d='M8 36a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4z'/%3E%3Ccircle cx='20' cy='50' r='6' fill='%23e2e8f0'/%3E%3Ccircle cx='44' cy='50' r='6' fill='%23e2e8f0'/%3E%3Cpath fill='%231f2937' d='M9 34c2-7 8-12 15-12h16c7 0 13 5 15 12z'/%3E%3C/svg%3E" />
 <style>
-  :root{ --bg:#0b1020; --card:#0e1426; --muted:#9aa4b2; --text:#e6ecf3;
-    --line:#1f2a44; --primary:#6ea8fe; --radius:16px; --gap:14px; --shadow:0 12px 40px rgba(0,0,0,.35); }
+  :root{
+    --bg:#0b1020; --surface:#0e1426; --muted:#9aa4b2; --text:#e6ecf3;
+    --line:#1f2a44; --accent:#0ea5e9; --accent-2:#22d3ee;
+    --danger:#ef4444; --ok:#22c55e; --warning:#f59e0b;
+    --radius:16px; --gap:14px; --shadow:0 14px 45px rgba(0,0,0,.38);
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:
-    radial-gradient(1200px 800px at 120% -10%, rgba(34,211,238,.08), transparent 60%),
-    radial-gradient(800px 600px at -10% 120%, rgba(79,134,247,.10), transparent 60%),
-    #0b1020; color:var(--text);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
-    -webkit-user-select:none; user-select:none; }
-  header{padding:28px 16px;text-align:center;background:linear-gradient(180deg, rgba(15,23,42,.6), transparent)}
-  header h1{margin:.2rem 0;font-size:clamp(22px,3.2vw,30px)}
-  header p{margin:.3rem 0 0;color:#9aa4b2}
-  .container{max-width:1200px;margin:0 auto;padding:18px}
-  .layout{display:grid;grid-template-columns:1.2fr .8fr;gap:var(--gap)}
-  @media (max-width:980px){.layout{grid-template-columns:1fr}}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-  .card-header{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
-  .card-header h2{margin:0;font-size:14px;color:#b8c3d6}
-  .card-body{padding:16px}
-  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--gap)}
-  .col-4{grid-column:span 4}.col-6{grid-column:span 6}.col-12{grid-column:span 12}
-  @media (max-width:720px){.col-4,.col-6{grid-column:span 12}}
-  label{display:block;font-size:12px;color:#a5b4fc;margin:0 0 6px 2px}
-  input,select{width:100%;padding:12px;border-radius:12px;border:1px solid #243255;background:linear-gradient(180deg,#0c1326,#0c142a);color:var(--text);outline:none;font-variant-numeric:tabular-nums}
-  input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(110,168,254,.15)}
-  .seg{display:flex;gap:8px;background:#0b1224;border:1px solid var(--line);border-radius:12px;padding:6px}
-  .seg input{display:none}
-  .seg label{flex:1;text-align:center;padding:10px 8px;border-radius:10px;cursor:pointer;color:#cfe1ff}
-  .seg input:checked+label{background:linear-gradient(180deg,rgba(110,168,254,.25),rgba(110,168,254,.15));border:1px solid #2b3a62}
-  .actions .btn{padding:12px 16px;border-radius:12px;border:1px solid #29407a;background:linear-gradient(180deg,#173266,#142b5a);color:#dbe7ff;cursor:pointer}
-  .actions .btn.primary{border-color:#3c6af0;background:linear-gradient(180deg,#3d6ffc,#2b59e9)}
-  .actions .btn:disabled{opacity:.6;cursor:not-allowed}
-  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
-  @media (max-width:980px){.summary{grid-template-columns:repeat(2,1fr)}}
-  .stat{background:#0a1328;border:1px solid var(--line);border-radius:14px;padding:14px}
-  .stat h3{margin:0 0 6px;font-size:12px;color:#90a3bf}
-  .stat .val{font-size:22px;font-weight:800}
-  .table-wrap{max-height:56vh;overflow:auto;border-radius:14px;border:1px solid var(--line)}
-  table{width:100%;border-collapse:collapse;font-size:14px;background:#0c1328}
-  th,td{padding:10px 12px;border-bottom:1px solid #172446;text-align:right}
-  th{position:sticky;top:0;background:#0b162f;color:#9ac4ff;z-index:1}
-  td:first-child,th:first-child{text-align:center}
-  tbody tr:nth-child(even){background:#0b152b}
-  tbody tr:hover{background:#0f1c38}
-  input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-  input[type=number]{-moz-appearance:textfield}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--text); background:
+      radial-gradient(1200px 800px at 120% -10%, rgba(34,211,238,.08), transparent 60%),
+      radial-gradient(1000px 600px at -10% 110%, rgba(14,165,233,.10), transparent 60%),
+      var(--bg);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  }
+  header{ padding: 24px 18px 10px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .logo{ width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg, var(--accent), var(--accent-2)); display:grid; place-items:center; box-shadow:var(--shadow)}
+  h1{margin:0; font-size:20px; letter-spacing:.2px}
+  .sub{color:var(--muted); font-size:12.5px; margin-top:2px}
+  main{ padding: 0 18px 28px; display:grid; grid-template-columns: 460px 1fr; gap:20px; }
+  @media (max-width: 980px){ main{grid-template-columns: 1fr} }
+  .card{ background:linear-gradient(180deg, rgba(255,255,255,.02), transparent 18%); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); }
+  .card h2{ margin:0; padding:14px 16px; font-size:15px; border-bottom:1px dashed var(--line); color:#cbd5e1 }
+  .card .content{ padding: 14px; }
+  .row{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px }
+  .row3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:12px }
+  .field{ display:flex; flex-direction:column; gap:6px }
+  .field label{ font-size:12.5px; color:var(--muted) }
+  .field input, .field select{ background:#0a1124; border:1px solid #1b2743; color:var(--text); border-radius:12px; padding:12px 12px; outline:none; }
+  .field input[type="number"]{ text-align:right }
+  .hint{ font-size:12px; color:#7b879a }
+  .muted{ color: var(--muted) }
+  .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:12px }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; padding: 0 14px 14px }
+  button{ appearance:none; border:none; cursor:pointer; background: linear-gradient(180deg, var(--accent), var(--accent-2)); color:#001018; font-weight:700; padding:12px 16px; border-radius:12px; box-shadow:var(--shadow) }
+  button.secondary{ background:#0a1124; color:var(--text); border:1px solid #1b2743; font-weight:600; }
+  .tabs{ display:flex; gap:8px; padding: 10px 14px 0; flex-wrap:wrap }
+  .tab{ padding:8px 10px; border:1px solid #1b2743; border-radius:999px; font-size:12.5px; color:#9fb3d1; cursor:pointer }
+  .tab.active{ background:#0a1124 }
+  .kpi{ display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; padding:14px; }
+  .tile{ background:#0a1124; border:1px solid #1b2743; border-radius:14px; padding:12px }
+  .tile .label{ font-size:12px; color:#9aa4b2 }
+  .tile .value{ font-size:22px; font-weight:800; margin-top:4px }
+  .tile .subv{ font-size:12px; color:#7b879a; margin-top:2px }
+  .schedule{ padding: 6px 14px 14px }
+  details{ border-top:1px dashed var(--line); }
+  details summary{ padding:12px 0; cursor:pointer; color:#cbd5e1 }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th,td{ border-bottom:1px solid #12203f; padding:8px 8px; text-align:right; white-space:nowrap }
+  th{ color:#9fb3d1; font-weight:600; position:sticky; top:0; background:#0d1427 }
+  td:first-child, th:first-child{ text-align:left }
+  .footer{ padding:10px 14px 18px; color:#7b879a; font-size:12px }
+  .chartWrap{ padding: 0 14px 16px }
+  canvas{ width:100%; height:260px; display:block; background:#0a1124; border:1px solid #1b2743; border-radius:12px }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px }
+  .chip{ padding:6px 8px; border:1px solid #1b2743; border-radius:999px; font-size:12px; color:#9fb3d1 }
+  .mode{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+  .mode label{ display:flex; align-items:center; gap:6px; border:1px solid #1b2743; border-radius:999px; padding:6px 10px; font-size:12.5px; color:#9fb3d1 }
+  /* --- Responsive fixes for 残価設定 はみ出し --- */
+  .field{ min-width:0 }
+  .field input, .field select{ width:100%; max-width:100%; min-width:0 }
+  .grid2{ grid-template-columns: 1fr 1fr; gap:12px }
+  @media (max-width: 700px){
+    .row, .row3{ grid-template-columns: 1fr }
+    .grid2{ grid-template-columns: 1fr }
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>自動車ローン シミュレーター</h1>
-  <p>残価設定あり・ボーナス指定あり／CSV＋PDF（日本語対応）</p>
+  <div class="logo">🚗</div>
+  <div>
+    <h1>自動車ローン シミュレーターPRO</h1>
+    <div class="sub">元利均等／元金均等・ボーナス「加算 or 総額指定」・残価％／円・グラフ表示（オフラインOK）</div>
+  </div>
 </header>
 
-<div class="container">
-  <div class="layout">
-    <!-- 入力 -->
-    <section class="card">
-      <div class="card-header"><h2>入力</h2></div>
-      <div class="card-body">
-        <div class="grid">
-          <div class="col-4"><label>車両価格（円）</label><input id="price" type="number" value="3000000"></div>
-          <div class="col-4"><label>支払い総額（円）</label><input id="totalCost" type="number" value="3300000"></div>
-          <div class="col-4"><label>頭金（円）</label><input id="down" type="number" value="500000"></div>
+<main>
+  <section class="card" id="inputs">
+    <h2>入力（日本国内向け）</h2>
+    <div class="content">
+      <div class="row">
+        <div class="field">
+          <label>車両本体価格 <span class="muted">（税込想定）</span></label>
+          <input type="number" id="price" value="3000000" min="0" step="1000">
+        </div>
+        <div class="field">
+          <label>オプション・諸費用</label>
+          <input type="number" id="fees" value="200000" min="0" step="1000">
+        </div>
+      </div>
 
-          <div class="col-4"><label>ローン金額（自動）</label><input id="loanAmt" type="number" readonly></div>
-          <div class="col-4"><label>年利（%）</label><input id="rate" type="number" value="3.0" step="0.01"></div>
-          <div class="col-4"><label>回数（ヶ月）</label><select id="months"></select></div>
+      <div class="row">
+        <div class="field">
+          <label>頭金</label>
+          <input type="number" id="down" value="300000" min="0" step="1000">
+        </div>
+        <div class="field">
+          <label>下取り（差引後）</label>
+          <input type="number" id="tradein" value="0" min="0" step="1000">
+        </div>
+      </div>
 
-          <div class="col-4"><label>残価率（%）</label><input id="balloonPct" type="number" value="0"></div>
-          <div class="col-4"><label>残価額（円）</label><input id="balloonAmt" type="number" value="0"></div>
+      <div class="row3">
+        <div class="field">
+          <label>実質年率（%）</label>
+          <input type="number" id="rate" value="3.9" min="0" step="0.01">
+        </div>
+        <div class="field">
+          <label>返済回数（月）</label>
+          <input type="number" id="months" value="60" min="1" step="1">
+        </div>
+        <div class="field">
+          <label>開始月 <span class="muted">（初回引落想定）</span></label>
+          <input type="month" id="startMonth">
+        </div>
+      </div>
 
-          <div class="col-12"><label>ボーナス方式</label>
-            <div class="seg">
-              <input type="radio" id="modeAdd" name="bonusMode" value="add" checked><label for="modeAdd">加算額</label>
-              <input type="radio" id="modeTotal" name="bonusMode" value="total"><label for="modeTotal">総支払額</label>
-            </div>
+      <div class="row">
+        <div class="field">
+          <label>ボーナス額</label>
+          <input type="number" id="bonusAmount" value="0" min="0" step="1000">
+          <div style="margin-top:6px">
+            <select id="bonusType" style="background:#0a1124;border:1px solid #1b2743;color:#e6ecf3;border-radius:12px;padding:8px 10px;">
+              <option value="addon" selected>加算（通常月に上乗せ）</option>
+              <option value="total">総額指定（その月の支払総額）</option>
+            </select>
           </div>
+          <div class="chips" style="margin-top:8px">
+            <label class="chip"><input type="checkbox" id="bonusJan" checked> 1月</label>
+            <label class="chip"><input type="checkbox" id="bonusJul" checked> 7月</label>
+            <label class="chip"><input type="checkbox" id="bonusJun"> 6月</label>
+            <label class="chip"><input type="checkbox" id="bonusDec"> 12月</label>
+          </div>
+          <div class="hint">「加算」＝通常返済に上乗せ／「総額指定」＝ボーナス月の総支払額を固定（最終回は残価を含む）。</div>
+        </div>
+        <div class="field">
+          <label>残価設定</label>
+          <div class="grid2">
+            <input type="number" id="balloonYen" value="0" min="0" step="1000" placeholder="残価（円）">
+            <input type="number" id="balloonPct" value="0" min="0" step="0.1" placeholder="残価（％）">
+          </div>
+          <div class="hint">％＞0 なら％を優先。0%のときは円の入力値を採用。</div>
+        </div>
+      </div>
 
-          <div class="col-4"><label>ボーナス年回数（0〜4）</label><select id="bonusTimes"></select></div>
-          <div class="col-4"><label>ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0"></div>
-          <div class="col-4"><label>ボーナス総支払額（円）</label><input id="bonusTotal" type="number" value="0"></div>
-
-          <div class="col-12" style="margin-top:8px">
-            <button id="calc" class="btn primary">計算</button>
-            <button id="download" class="btn" disabled>CSV</button>
-            <button id="pdf" class="btn" disabled>PDF</button>
+      <div class="row">
+        <div class="field">
+          <label>端数処理</label>
+          <select id="rounding">
+            <option value="none">しない（円単位）</option>
+            <option value="down">毎回：切り捨て</option>
+            <option value="nearest" selected>毎回：四捨五入</option>
+            <option value="up">毎回：切り上げ</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>返済方式</label>
+          <div class="mode">
+            <label><input type="radio" name="mode" value="annuity" checked> 元利均等</label>
+            <label><input type="radio" name="mode" value="equal_principal"> 元金均等</label>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+    <div class="actions">
+      <button id="run">計算する</button>
+      <button id="reset" class="secondary">リセット</button>
+      <button id="print" class="secondary">印刷／PDF</button>
+      <button id="export" class="secondary">CSV書き出し</button>
+    </div>
+  </section>
 
-    <!-- 出力 -->
-    <section class="card">
-      <div class="card-header"><h2>結果</h2></div>
-      <div class="card-body">
-        <div class="summary">
-          <div class="stat"><h3>借入額</h3><div id="loan" class="val">-</div></div>
-          <div class="stat"><h3>毎月返済</h3><div id="monthly" class="val">-</div></div>
-          <div class="stat"><h3>総支払額</h3><div id="total" class="val">-</div></div>
-          <div class="stat"><h3>利息総額</h3><div id="interest" class="val">-</div></div>
+  <section class="card">
+    <div class="tabs">
+      <div class="tab active" id="tab1">結果サマリー</div>
+      <div class="tab" id="tab2">残高グラフ</div>
+    </div>
+    <div id="panel1">
+      <div class="kpi">
+        <div class="tile">
+          <div class="label">借入金額（元金）</div>
+          <div id="k_principal" class="value">-</div>
+          <div class="subv">（総支払 - 利息 - 手元支払）</div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>#</th><th>返済額</th><th>利息</th><th>元金</th><th>ボーナス</th><th>残高</th></tr></thead>
-            <tbody id="tbody"></tbody>
-          </table>
+        <div class="tile">
+          <div class="label">毎月の基本返済（ボーナス除く）</div>
+          <div id="k_monthly" class="value">-</div>
+          <div class="subv"><span id="k_mode">元利均等</span>・選択月はボーナス反映</div>
+        </div>
+        <div class="tile">
+          <div class="label">総支払額</div>
+          <div id="k_total" class="value">-</div>
+          <div class="subv">うち利息：<span id="k_interest">-</span></div>
         </div>
       </div>
-    </section>
-  </div>
-</div>
-
-<!-- ライブラリ -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+      <div class="schedule">
+        <details id="detail">
+          <summary>返済予定表を開く</summary>
+          <div style="overflow:auto; max-height:55vh; margin-top:10px">
+            <table id="tbl">
+              <thead>
+                <tr>
+                  <th>回</th><th>支払日</th><th>支払額</th><th>うちボーナス</th><th>うち残価</th>
+                  <th>利息</th><th>元金</th><th>残高</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+      <div class="footer">
+        計算方式：<span class="muted">元利均等は二分探索で基本返済額を決定。元金均等は月々の元金を一定化（※ボーナス「総額指定」を選んだ月は元金が一定にならない場合があります）。</span>
+      </div>
+      <div id="testStatus" class="footer"></div>
+    </div>
+    <div id="panel2" style="display:none">
+      <div class="chartWrap"><canvas id="chart" width="800" height="260" aria-label="残高の推移"></canvas></div>
+      <div class="footer">残高グラフ：縦軸＝残高（円）、横軸＝回数（1〜N）。</div>
+    </div>
+  </section>
+</main>
 
 <script>
-const fmt=new Intl.NumberFormat("ja-JP");
-const $=id=>document.getElementById(id);
+(function(){
+  const yen = n => n.toLocaleString('ja-JP', {maximumFractionDigits:0});
+  const nextMonth = d => new Date(d.getFullYear(), d.getMonth()+1, 1);
 
-/* 初期化 */
-(()=>{for(let i=1;i<=120;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===60)op.selected=true;$("months").appendChild(op);}for(let i=0;i<=4;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===2)op.selected=true;$("bonusTimes").appendChild(op);}})();
-function recalcLoanAmt(){const total=+($("totalCost").value||0),down=+($("down").value||0);$("loanAmt").value=Math.max(total-down,0);}
-["totalCost","down"].forEach(id=>$(id).addEventListener("input",recalcLoanAmt));
-
-/* 残価連動 */
-let lastSrc="pct";
-function syncFromPct(){const price=+($("price").value||0);let pct=+($("balloonPct").value||0);if(pct<=0){$("balloonPct").value=0;$("balloonAmt").value=0;}else{$("balloonAmt").value=Math.floor(price*pct/100);}lastSrc="pct";}
-function syncFromAmt(){const price=+($("price").value||0);let amt=+($("balloonAmt").value||0);if(amt<=0){$("balloonAmt").value=0;$("balloonPct").value=0;}else{$("balloonPct").value=Math.round(amt/price*100);$("balloonAmt").value=amt;}lastSrc="amt";}
-$("balloonPct").addEventListener("input",syncFromPct);$("balloonAmt").addEventListener("input",syncFromAmt);
-
-/* ボーナスUI */
-function toggleBonusUI(){const times=+($("bonusTimes").value||0),mode=document.querySelector('input[name="bonusMode"]:checked').value;const amt=$("bonusAmt"),tot=$("bonusTotal");amt.disabled=(times===0||mode!=="add");tot.disabled=(times===0||mode!=="total");if(times===0){amt.value=0;tot.value=0;}}
-$("bonusTimes").addEventListener("change",toggleBonusUI);document.querySelectorAll('input[name="bonusMode"]').forEach(r=>r.addEventListener("change",toggleBonusUI));
-
-/* 計算 */
-$("calc").addEventListener("click",compute);
-function compute(){
-  recalcLoanAmt();
-  const loan=+($("loanAmt").value||0),rate=+($("rate").value||0),months=+($("months").value||0);
-  let residual=Math.min(+($("balloonAmt").value||0),loan);if(residual>=loan)residual=Math.max(0,loan-1);
-  const r=rate/100/12;
-
-  // PMT
-  let monthly;
-  if(r===0){monthly=Math.ceil((loan-residual)/months);}else{const pow=Math.pow(1+r,months);monthly=Math.ceil((r*(loan*pow-residual))/(pow-1));}
-
-  let bal=loan,totalPay=0,totalInt=0;
-  const tb=$("tbody");tb.innerHTML="";
-  const bonusTimes=+($("bonusTimes").value||0),mode=document.querySelector('input[name="bonusMode"]:checked').value;
-  const bonusAmt=+($("bonusAmt").value||0),bonusTotal=+($("bonusTotal").value||0);
-  const interval=bonusTimes>0?Math.max(1,Math.round(12/bonusTimes)):0;
-
-  for(let i=1;i<=months;i++){
-    const interest=(r===0)?0:Math.max(1,Math.ceil(bal*r));
-    let basePay=monthly,isBonus=(interval&&(i%interval===0)),payDesired;
-    if(isBonus){if(mode==="add"){payDesired=Math.max(basePay+bonusAmt,interest);}else{payDesired=Math.max(bonusTotal,basePay,interest);}}else{payDesired=Math.max(basePay,interest);}
-    const desiredPrincipal=Math.max(0,payDesired-interest);
-    const maxPrincipal=Math.max(0,bal-residual);
-    const principal=Math.min(desiredPrincipal,maxPrincipal);
-    bal-=principal;
-    totalPay+=payDesired;totalInt+=interest;
-    const shownBonus=isBonus?Math.max(0,payDesired-monthly):0;
-    tb.insertAdjacentHTML("beforeend",`<tr><td>${i}</td><td>${fmt.format(payDesired)}</td><td>${fmt.format(interest)}</td><td>${fmt.format(principal)}</td><td>${fmt.format(shownBonus)}</td><td>${fmt.format(Math.round(bal))}</td></tr>`);
+  function roundingMode(val, mode){
+    if(mode==='down') return Math.floor(val);
+    if(mode==='up') return Math.ceil(val);
+    if(mode==='nearest') return Math.round(val);
+    return Math.round(val); // 円単位固定
   }
-  $("loan").textContent=fmt.format(loan);$("monthly").textContent=fmt.format(monthly);$("total").textContent=fmt.format(totalPay);$("interest").textContent=fmt.format(totalInt);
-  $("download").disabled=false;$("download").onclick=()=>{const rows=[["#","返済額","利息","元金","ボーナス","残高"]];document.querySelectorAll("#tbody tr").forEach(tr=>rows.push([...tr.children].map(td=>td.textContent.replace(/,/g,""))));const csv=rows.map(r=>r.join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="car_loan_schedule.csv";a.click();};
-  $("pdf").disabled=true; // PDF省略
-}
 
-/* 初期 */
-window.addEventListener("load",()=>{recalcLoanAmt();toggleBonusUI();syncFromPct();compute();});
+  function getInputs(){
+    const price = +priceEl.value||0;
+    const fees = +feesEl.value||0;
+    const down = +downEl.value||0;
+    const tradein = +tradeinEl.value||0;
+    const rateY = +rateEl.value||0;
+    const months = Math.max(1, (+monthsEl.value|0));
+    const startMonthStr = startMonthEl.value;
+    const startDate = startMonthStr ? new Date(startMonthStr+'-01') : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const bonusAmount = +bonusAmountEl.value||0;
+    const bonusType = (document.getElementById('bonusType')||{value:'addon'}).value;
+    const bonusMonths = [];
+    if(bonusJanEl.checked) bonusMonths.push(0);
+    if(bonusJulEl.checked) bonusMonths.push(6);
+    if(bonusJunEl.checked) bonusMonths.push(5);
+    if(bonusDecEl.checked) bonusMonths.push(11);
+    const balloonPct = +balloonPctEl.value||0;
+    const balloonYen = +balloonYenEl.value||0;
+    const rounding = roundingEl.value;
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    return {price, fees, down, tradein, rateY, months, startDate, bonusAmount, bonusType, bonusMonths, balloonPct, balloonYen, rounding, mode};
+  }
+
+  function resolveBalloon(principal, pct, yen){
+    if(pct>0){ return Math.max(0, Math.min(principal*0.9, principal * pct/100)); }
+    return Math.max(0, Math.min(principal*0.9, yen));
+  }
+
+  function buildSchedule(inp){
+    const r = inp.rateY/100/12;
+    const gross = inp.price + inp.fees;
+    const principal = Math.max(0, gross - inp.down - inp.tradein);
+    const balloon = resolveBalloon(principal, inp.balloonPct, inp.balloonYen);
+    const bonusSet = new Set(inp.bonusMonths);
+    const isTotal = inp.bonusType==='total';
+
+    if(inp.mode==='annuity'){
+      // Base monthly by binary search. In bonus months, either add-on or fix total.
+      let lo = 0, hi = Math.max(1, principal / inp.months);
+      const feasible = base => {
+        let bal = principal;
+        let d = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
+        for(let i=0;i<inp.months;i++){
+          const isBonus = bonusSet.has(d.getMonth());
+          let pay = (isBonus ? (isTotal ? inp.bonusAmount : base + inp.bonusAmount) : base) + (i===inp.months-1? balloon:0);
+          const interest = bal * r;
+          const principalPay = Math.max(0, pay - interest);
+          bal -= principalPay;
+          d = nextMonth(d);
+        }
+        return bal <= 0; // if positive, need larger base
+      };
+      while(!feasible(hi)) hi *= 1.6, hi = Math.min(hi, principal*2 + 1e6);
+      for(let k=0;k<64;k++){ const mid=(lo+hi)/2; feasible(mid)? hi=mid: lo=mid; }
+      const baseMonthly = hi;
+
+      // rows
+      const rows = [];
+      let bal = principal, totalPay=0, totalInt=0, totalBonus=0;
+      let d = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
+      for(let i=0;i<inp.months;i++){
+        const isBonus = bonusSet.has(d.getMonth());
+        const bonusDisplay = isBonus && !isTotal ? inp.bonusAmount : 0;
+        let pay = (isBonus ? (isTotal ? inp.bonusAmount : baseMonthly + inp.bonusAmount) : baseMonthly) + (i===inp.months-1? balloon:0);
+        const interest = bal * r;
+        let principalPay = Math.max(0, pay - interest);
+        pay = roundingMode(pay, inp.rounding);
+        const adjust = pay - (interest + principalPay);
+        principalPay += adjust;
+        if(i===inp.months-1){
+          principalPay = bal;
+          pay = roundingMode(interest + principalPay, inp.rounding);
+        }
+        bal = Math.max(0, bal - principalPay);
+        totalPay += pay; totalInt += Math.max(0, interest); totalBonus += bonusDisplay;
+        rows.push({ idx:i+1, date:new Date(d), pay, bonus: bonusDisplay, balloon:(i===inp.months-1? balloon:0),
+          interest, principal: principalPay, balance: bal });
+        d = nextMonth(d);
+      }
+      return { mode:'元利均等', principal, baseMonthly: roundingMode(baseMonthly, inp.rounding),
+        totalPay: roundingMode(totalPay, 'nearest'), totalInterest: Math.round(totalInt), totalBonus, balloon, rows };
+
+    } else {
+      // equal principal (with option: total fixes total payment in bonus months, so principal varies there)
+      const rows = [];
+      let bal = principal, totalPay=0, totalInt=0, totalBonus=0;
+      let d = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
+      const monthlyPrincipal = Math.max(0, (principal - balloon) / inp.months);
+      let firstBaseMonthly = 0;
+      for(let i=0;i<inp.months;i++){
+        const isBonus = bonusSet.has(d.getMonth());
+        const interest = bal * r;
+        let bonusDisplay = 0;
+        let principalPay = (i===inp.months-1 ? bal : monthlyPrincipal);
+        let targetPay;
+        if(isBonus && isTotal){
+          targetPay = inp.bonusAmount + (i===inp.months-1? balloon:0); // fix total payment
+        } else {
+          bonusDisplay = isBonus ? inp.bonusAmount : 0;
+          targetPay = principalPay + interest + bonusDisplay + (i===inp.months-1? balloon:0);
+        }
+        let pay = roundingMode(targetPay, inp.rounding);
+        // adjust principal so that interest + (bonusDisplay if addon) + balloon + principal = pay
+        principalPay = pay - interest - (i===inp.months-1? balloon:0) - (isBonus && !isTotal ? bonusDisplay : 0);
+        if(i===inp.months-1){ principalPay = bal; pay = roundingMode(interest + principalPay + (isBonus && !isTotal ? bonusDisplay:0) + (i===inp.months-1? balloon:0), inp.rounding); }
+        bal = Math.max(0, bal - principalPay);
+        totalPay += pay; totalInt += Math.max(0, interest); totalBonus += bonusDisplay;
+        if(i===0) firstBaseMonthly = roundingMode(principalPay + interest, inp.rounding);
+        rows.push({ idx:i+1, date:new Date(d), pay, bonus: bonusDisplay, balloon:(i===inp.months-1? balloon:0), interest, principal: principalPay, balance: bal });
+        d = nextMonth(d);
+      }
+      return { mode:'元金均等', principal, baseMonthly: firstBaseMonthly,
+        totalPay: roundingMode(totalPay, 'nearest'), totalInterest: Math.round(totalInt), totalBonus, balloon, rows };
+    }
+  }
+
+  function fmtDate(d){ const y = d.getFullYear(), m = (d.getMonth()+1).toString().padStart(2,'0'); return `${y}/${m}`; }
+
+  function render(res){
+    k_principal.textContent = `¥${yen(res.principal)}`;
+    k_monthly.textContent = `¥${yen(res.baseMonthly)}`;
+    k_total.textContent = `¥${yen(res.totalPay)}`;
+    k_interest.textContent = `¥${yen(res.totalInterest)}`;
+    k_mode.textContent = res.mode;
+
+    const tb = document.querySelector('#tbl tbody');
+    tb.innerHTML = '';
+    for(const r of res.rows){
+      const tr = document.createElement('tr');
+      const cells = [ r.idx, fmtDate(r.date), `¥${yen(Math.round(r.pay))}`, r.bonus? `¥${yen(r.bonus)}`: '—', r.balloon? `¥${yen(r.balloon)}`: '—', `¥${yen(Math.round(r.interest))}`, `¥${yen(Math.round(r.principal))}`, `¥${yen(Math.round(r.balance))}` ];
+      for(const c of cells){ const td=document.createElement('td'); td.textContent=c; tr.appendChild(td); }
+      tb.appendChild(tr);
+    }
+
+    drawChart(res.rows.map(r=>r.balance));
+  }
+
+  function toCSV(res){
+    const header = ['回','支払年月','支払額','ボーナス','残価','利息','元金','残高'];
+    const lines = [header.join(',')];
+    for(const r of res.rows){ lines.push([ r.idx, fmtDate(r.date), Math.round(r.pay), r.bonus, r.balloon, Math.round(r.interest), Math.round(r.principal), Math.round(r.balance) ].join(',')); }
+    const meta = [ ['返済方式', res.mode], ['借入元金', res.principal], ['毎月基本返済(概算)', res.baseMonthly], ['総支払額', res.totalPay], ['総利息', res.totalInterest], ['残価', res.balloon] ].map(a=>a[0]+','+a[1]).join('\n');
+    return `データ種別,返済予定表\n${lines.join('\n')}\n\nサマリー\n${meta}`;
+  }
+
+  function download(name, text){ const blob = new Blob([text], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 2000); }
+
+  function drawChart(values){
+    const c = chart; const ctx = c.getContext('2d'); const W = c.width, H = c.height; ctx.clearRect(0,0,W,H);
+    const padL=50, padR=16, padT=12, padB=26; const w = W - padL - padR, h = H - padT - padB; const n = values.length;
+    const maxV = Math.max(...values), minV = Math.min(...values); const y = v => padT + h - (h*(v - minV)/(maxV - minV || 1)); const x = i => padL + (w*(i)/(Math.max(1,n-1)));
+    ctx.strokeStyle = '#1b2743'; ctx.lineWidth = 1; ctx.beginPath(); for(let k=0;k<=4;k++){ const gy = padT + h*k/4; ctx.moveTo(padL, gy); ctx.lineTo(W-padR, gy); } ctx.stroke();
+    ctx.fillStyle = '#9fb3d1'; ctx.font = '12px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; for(let k=0;k<=4;k++){ const gy = padT + h*k/4; const val = Math.round(maxV - (maxV-minV)*k/4); ctx.fillText('¥'+val.toLocaleString('ja-JP'), padL-8, gy); }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; for(let i=0;i<n;i+=Math.max(1, Math.floor(n/8))){ ctx.fillText(String(i+1), x(i), H-padB+6); }
+    ctx.beginPath(); for(let i=0;i<n;i++){ const xi=x(i), yi=y(values[i]); if(i===0) ctx.moveTo(xi, yi); else ctx.lineTo(xi, yi); } ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // Elements
+  const priceEl = document.getElementById('price');
+  const feesEl = document.getElementById('fees');
+  const downEl = document.getElementById('down');
+  const tradeinEl = document.getElementById('tradein');
+  const rateEl = document.getElementById('rate');
+  const monthsEl = document.getElementById('months');
+  const startMonthEl = document.getElementById('startMonth');
+  const bonusAmountEl = document.getElementById('bonusAmount');
+  const bonusJanEl = document.getElementById('bonusJan');
+  const bonusJulEl = document.getElementById('bonusJul');
+  const bonusJunEl = document.getElementById('bonusJun');
+  const bonusDecEl = document.getElementById('bonusDec');
+  const balloonYenEl = document.getElementById('balloonYen');
+  const balloonPctEl = document.getElementById('balloonPct');
+  const roundingEl = document.getElementById('rounding');
+
+  const k_principal = document.getElementById('k_principal');
+  const k_monthly = document.getElementById('k_monthly');
+  const k_total = document.getElementById('k_total');
+  const k_interest = document.getElementById('k_interest');
+  const k_mode = document.getElementById('k_mode');
+
+  const chart = document.getElementById('chart');
+  const panel1 = document.getElementById('panel1');
+  const panel2 = document.getElementById('panel2');
+
+  // Tabs
+  const tab1 = document.getElementById('tab1');
+  const tab2 = document.getElementById('tab2');
+  tab1.addEventListener('click', ()=>{ tab1.classList.add('active'); tab2.classList.remove('active'); panel1.style.display='block'; panel2.style.display='none'; });
+  tab2.addEventListener('click', ()=>{ tab2.classList.add('active'); tab1.classList.remove('active'); panel2.style.display='block'; panel1.style.display='none'; });
+
+  // Run
+  document.getElementById('run').addEventListener('click', ()=>{ const res = buildSchedule(getInputs()); render(res); if(!document.getElementById('detail').open){ document.getElementById('detail').open = true; } });
+  document.getElementById('reset').addEventListener('click', ()=>{
+    priceEl.value = 3000000; feesEl.value = 200000; downEl.value = 300000; tradeinEl.value = 0; rateEl.value = 3.9; monthsEl.value = 60; startMonthEl.value = '';
+    bonusAmountEl.value = 0; document.getElementById('bonusType').value = 'addon'; bonusJanEl.checked = true; bonusJulEl.checked = true; bonusJunEl.checked = false; bonusDecEl.checked = false;
+    balloonYenEl.value = 0; balloonPctEl.value = 0; roundingEl.value = 'nearest';
+    document.querySelector('input[name="mode"][value="annuity"]').checked = true;
+    document.querySelector('#tbl tbody').innerHTML='';
+    k_principal.textContent='-'; k_monthly.textContent='-'; k_total.textContent='-'; k_interest.textContent='-'; k_mode.textContent='元利均等';
+  });
+  document.getElementById('print').addEventListener('click', ()=>{ window.print(); });
+  document.getElementById('export').addEventListener('click', ()=>{ const res = buildSchedule(getInputs()); const csv = toCSV(res); const now = new Date(); const name = `auto-loan-schedule_pro_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`; download(name, csv); });
+
+  // --- Self Tests (basic invariants + layout) ---
+  function approx(a,b,eps=1){ return Math.abs(a-b) <= eps; }
+  function sum(arr){ return arr.reduce((s,v)=>s+v,0); }
+  function runSelfTests(){
+    const tests = [];
+    // T1: 無金利・ボーナス無し・残価無し → 総支払 = 元金、最終残高 = 0
+    const inp1 = { price:1200000, fees:0, down:0, tradein:0, rateY:0, months:12, startDate:new Date(2025,0,1), bonusAmount:0, bonusType:'addon', bonusMonths:[], balloonPct:0, balloonYen:0, rounding:'nearest', mode:'annuity' };
+    const r1 = buildSchedule(inp1);
+    tests.push( approx(r1.totalPay, r1.principal) && approx(r1.rows[r1.rows.length-1].balance, 0) );
+
+    // T2: 無金利・ボーナス加算（1月/7月）→ 最終残高 = 0、ボーナス表示が入る
+    const inp2 = { ...inp1, bonusAmount:50000, bonusMonths:[0,6] };
+    const r2 = buildSchedule(inp2);
+    const bonusCells2 = r2.rows.filter(x=>x.bonus>0).length; tests.push( bonusCells2===2 && approx(r2.rows.at(-1).balance, 0) );
+
+    // T3: 無金利・ボーナス総額指定（1月固定15万）→ ボーナス月の支払総額が一致
+    const inp3 = { ...inp1, bonusType:'total', bonusAmount:150000, bonusMonths:[0], months:6 };
+    const r3 = buildSchedule(inp3);
+    const jan = r3.rows[0]; tests.push( Math.round(jan.pay)===150000 );
+
+    // T4: 残価設定（20%）→ 最終回に残価が表示される
+    const inp4 = { ...inp1, price:2000000, months:24, balloonPct:20 };
+    const r4 = buildSchedule(inp4);
+    tests.push( r4.rows.at(-1).balloon>0 );
+
+    const ok = tests.every(Boolean);
+    const el = document.getElementById('testStatus');
+    el.textContent = ok ? '✅ 内部テスト: 全て合格' : '⚠️ 内部テスト: 失敗があります（F12 → Console を確認）';
+    if(!ok){ console.warn('SelfTest results:', tests, {r1,r2,r3,r4}); }
+  }
+
+  // initial
+  document.getElementById('run').click();
+  runSelfTests();
+  // Layout self-check: detect overflow of residual inputs
+  function layoutSelfCheck(){
+    try{
+      const grid2 = document.querySelector('#inputs .grid2');
+      const inputs = grid2 ? grid2.querySelectorAll('input,select') : [];
+      let overflow = false;
+      inputs.forEach(el=>{
+        const r = el.getBoundingClientRect();
+        const pr = (el.parentElement||el).getBoundingClientRect();
+        if(r.right - pr.right > 1) overflow = true;
+      });
+      const el = document.getElementById('testStatus');
+      if(el){ el.textContent += overflow ? '｜⚠️ レイアウト警告: 画面幅が狭く入力がはみ出しています（横幅を広げるか、スマホでは縦向きに）。' : '｜🧩 レイアウトOK'; }
+    }catch(e){ /* noop */ }
+  }
+  layoutSelfCheck();
+  window.addEventListener('resize', layoutSelfCheck);
+})();
 </script>
 </body>
 </html>
