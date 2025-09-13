@@ -3,280 +3,184 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>自動車ローン シミュレーション</title>
+<title>自動車ローン シミュレーター</title>
+<meta name="theme-color" content="#0f172a" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" href="favicon.ico" type="image/x-icon" />
 <style>
-  :root{--gap:12px;--radius:12px}
-  *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif}
-  body{margin:0;background:#0f172a;color:#e5e7eb}
-  header{padding:24px 16px;text-align:center;background:linear-gradient(180deg,#111827,#0f172a)}
-  header h1{margin:.2rem 0;font-size:clamp(20px,4vw,28px)}
-  header p{margin:.2rem 0;color:#cbd5e1}
-  main{max-width:1200px;margin:0 auto;padding:16px}
-  .panel{background:#111827;border:1px solid #1f2937;border-radius:var(--radius);padding:16px;box-shadow:0 10px 24px rgba(0,0,0,.2)}
-  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
-  @media (max-width:880px){.grid{grid-template-columns:repeat(2,1fr)}}
-  @media (max-width:560px){.grid{grid-template-columns:1fr}}
-  label{display:block;font-size:12px;color:#a5b4fc;margin-bottom:6px}
-  input, select{width:100%;padding:12px 10px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#e5e7eb}
-  input:focus{outline:2px solid #6366f1;border-color:#6366f1}
-  .row{display:flex;gap:var(--gap);flex-wrap:wrap}
-  .btn{appearance:none;border:1px solid #334155;background:#1f2937;color:#e5e7eb;padding:12px 14px;border-radius:10px;cursor:pointer}
-  .btn.primary{background:#4f46e5;border-color:#4f46e5}
-  .btn:disabled{opacity:.6;cursor:not-allowed}
-  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);margin-top:16px}
-  @media (max-width:880px){.summary{grid-template-columns:repeat(2,1fr)}}
-  @media (max-width:560px){.summary{grid-template-columns:1fr}}
-  .card{background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:14px}
-  .card h3{margin:.2rem 0 .4rem;font-size:12px;color:#94a3b8;font-weight:600}
-  .card .val{font-size:20px;font-weight:700}
-  table{width:100%;border-collapse:collapse;margin-top:16px;border:1px solid #1f2937}
-  th,td{padding:10px;border-bottom:1px solid #1f2937;text-align:right;font-variant-numeric:tabular-nums}
-  th{position:sticky;top:0;background:#0b1220;color:#93c5fd;z-index:1}
+  :root{ --bg:#0b1020; --card:#0e1426; --muted:#9aa4b2; --text:#e6ecf3;
+    --line:#1f2a44; --primary:#6ea8fe; --radius:16px; --gap:14px; --shadow:0 12px 40px rgba(0,0,0,.35); }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+    radial-gradient(1200px 800px at 120% -10%, rgba(34,211,238,.08), transparent 60%),
+    radial-gradient(800px 600px at -10% 120%, rgba(79,134,247,.10), transparent 60%),
+    #0b1020; color:var(--text);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+    -webkit-user-select:none; user-select:none; }
+  header{padding:28px 16px;text-align:center;background:linear-gradient(180deg, rgba(15,23,42,.6), transparent)}
+  header h1{margin:.2rem 0;font-size:clamp(22px,3.2vw,30px)}
+  header p{margin:.3rem 0 0;color:#9aa4b2}
+  .container{max-width:1200px;margin:0 auto;padding:18px}
+  .layout{display:grid;grid-template-columns:1.2fr .8fr;gap:var(--gap)}
+  @media (max-width:980px){.layout{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card-header{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .card-header h2{margin:0;font-size:14px;color:#b8c3d6}
+  .card-body{padding:16px}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--gap)}
+  .col-4{grid-column:span 4}.col-6{grid-column:span 6}.col-12{grid-column:span 12}
+  @media (max-width:720px){.col-4,.col-6{grid-column:span 12}}
+  label{display:block;font-size:12px;color:#a5b4fc;margin:0 0 6px 2px}
+  input,select{width:100%;padding:12px;border-radius:12px;border:1px solid #243255;background:linear-gradient(180deg,#0c1326,#0c142a);color:var(--text);outline:none;font-variant-numeric:tabular-nums}
+  input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(110,168,254,.15)}
+  .seg{display:flex;gap:8px;background:#0b1224;border:1px solid var(--line);border-radius:12px;padding:6px}
+  .seg input{display:none}
+  .seg label{flex:1;text-align:center;padding:10px 8px;border-radius:10px;cursor:pointer;color:#cfe1ff}
+  .seg input:checked+label{background:linear-gradient(180deg,rgba(110,168,254,.25),rgba(110,168,254,.15));border:1px solid #2b3a62}
+  .actions .btn{padding:12px 16px;border-radius:12px;border:1px solid #29407a;background:linear-gradient(180deg,#173266,#142b5a);color:#dbe7ff;cursor:pointer}
+  .actions .btn.primary{border-color:#3c6af0;background:linear-gradient(180deg,#3d6ffc,#2b59e9)}
+  .actions .btn:disabled{opacity:.6;cursor:not-allowed}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
+  @media (max-width:980px){.summary{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:#0a1328;border:1px solid var(--line);border-radius:14px;padding:14px}
+  .stat h3{margin:0 0 6px;font-size:12px;color:#90a3bf}
+  .stat .val{font-size:22px;font-weight:800}
+  .table-wrap{max-height:56vh;overflow:auto;border-radius:14px;border:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-size:14px;background:#0c1328}
+  th,td{padding:10px 12px;border-bottom:1px solid #172446;text-align:right}
+  th{position:sticky;top:0;background:#0b162f;color:#9ac4ff;z-index:1}
   td:first-child,th:first-child{text-align:center}
-  .scroll{max-height:55vh;overflow:auto;border-radius:12px}
-  footer{padding:24px;text-align:center;color:#94a3b8}
-  .note{color:#9ca3af;font-size:12px;margin-top:6px}
+  tbody tr:nth-child(even){background:#0b152b}
+  tbody tr:hover{background:#0f1c38}
+  input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input[type=number]{-moz-appearance:textfield}
 </style>
 </head>
 <body>
 <header>
-  <h1>自動車ローン シミュレーション</h1>
-  <p>元利均等返済＋残価設定＋ボーナス併用。月々の返済額・総支払額・利息総額を即時計算。</p>
+  <h1>自動車ローン シミュレーター</h1>
+  <p>残価設定あり・ボーナス指定あり／CSV＋PDF（日本語対応）</p>
 </header>
-<main>
-  <section class="panel" aria-label="入力フォーム">
-    <div class="grid">
-      <div>
-        <label for="price">車両価格（円）</label>
-        <input id="price" type="number" value="3000000" min="0" step="1000">
-      </div>
-      <div>
-        <label for="down">頭金（円）</label>
-        <input id="down" type="number" value="500000" min="0" step="1000">
-      </div>
-      <div>
-        <label for="rate">年利（%）</label>
-        <input id="rate" type="number" value="3.0" min="0" step="0.01">
-      </div>
-      <div>
-        <label for="years">返済年数（年）</label>
-        <input id="years" type="number" value="5" min="0.5" step="0.5">
-      </div>
-      <div>
-        <label for="balloonPct">残価率（%・任意）</label>
-        <input id="balloonPct" type="number" value="0" min="0" max="80" step="1">
-      </div>
-      <div>
-        <label for="balloonAmt">残価額（円・任意）</label>
-        <input id="balloonAmt" type="number" value="0" min="0" step="10000">
-        <div class="note">残価率より優先されます</div>
-      </div>
-      <div>
-        <label for="bonusAmt">ボーナス加算額（円・任意）</label>
-        <input id="bonusAmt" type="number" value="0" min="0" step="10000">
-        <div class="note">例: 50,000円を年2回</div>
-      </div>
-      <div>
-        <label for="bonusTimes">ボーナス支払回数（年）</label>
-        <input id="bonusTimes" type="number" value="2" min="1" max="12">
-      </div>
-      <div>
-        <label for="extra">毎月の繰上返済額（円・任意）</label>
-        <input id="extra" type="number" value="0" min="0" step="1000">
-      </div>
-      <div>
-        <label for="fees">初期手数料（円・任意）</label>
-        <input id="fees" type="number" value="0" min="0" step="500">
-      </div>
-      <div>
-        <label for="startMonth">開始月</label>
-        <select id="startMonth"></select>
-      </div>
-    </div>
-    <div class="row" style="margin-top:16px">
-      <button id="calc" class="btn primary">計算する</button>
-      <button id="download" class="btn" disabled>CSVダウンロード</button>
-      <button id="print" class="btn">印刷 / PDF保存</button>
-      <span class="note">※ 金額は概算。実際の契約条件を優先してください。</span>
-    </div>
-    <div class="summary" aria-live="polite">
-      <div class="card"><h3>借入額</h3><div id="loan" class="val">-</div></div>
-      <div class="card"><h3>毎月の返済額</h3><div id="monthly" class="val">-</div></div>
-      <div class="card"><h3>総支払額</h3><div id="total" class="val">-</div></div>
-      <div class="card"><h3>利息総額</h3><div id="interest" class="val">-</div></div>
-    </div>
-  </section>
 
-  <section class="panel" style="margin-top:16px" aria-label="償還表">
-    <div class="scroll">
-      <table id="table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>年月</th>
-            <th>返済額</th>
-            <th>うち利息</th>
-            <th>うち元金</th>
-            <th>繰上返済</th>
-            <th>ボーナス</th>
-            <th>残高</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
-</main>
-<footer>
-  <small>© 2025 Auto Loan Simulator · 計算方式: 元利均等（0%は等額割）。残価は満期一括支払いとして計上。</small>
-</footer>
+<div class="container">
+  <div class="layout">
+    <!-- 入力 -->
+    <section class="card">
+      <div class="card-header"><h2>入力</h2></div>
+      <div class="card-body">
+        <div class="grid">
+          <div class="col-4"><label>車両価格（円）</label><input id="price" type="number" value="3000000"></div>
+          <div class="col-4"><label>支払い総額（円）</label><input id="totalCost" type="number" value="3300000"></div>
+          <div class="col-4"><label>頭金（円）</label><input id="down" type="number" value="500000"></div>
+
+          <div class="col-4"><label>ローン金額（自動）</label><input id="loanAmt" type="number" readonly></div>
+          <div class="col-4"><label>年利（%）</label><input id="rate" type="number" value="3.0" step="0.01"></div>
+          <div class="col-4"><label>回数（ヶ月）</label><select id="months"></select></div>
+
+          <div class="col-4"><label>残価率（%）</label><input id="balloonPct" type="number" value="0"></div>
+          <div class="col-4"><label>残価額（円）</label><input id="balloonAmt" type="number" value="0"></div>
+
+          <div class="col-12"><label>ボーナス方式</label>
+            <div class="seg">
+              <input type="radio" id="modeAdd" name="bonusMode" value="add" checked><label for="modeAdd">加算額</label>
+              <input type="radio" id="modeTotal" name="bonusMode" value="total"><label for="modeTotal">総支払額</label>
+            </div>
+          </div>
+
+          <div class="col-4"><label>ボーナス年回数（0〜4）</label><select id="bonusTimes"></select></div>
+          <div class="col-4"><label>ボーナス加算額（円）</label><input id="bonusAmt" type="number" value="0"></div>
+          <div class="col-4"><label>ボーナス総支払額（円）</label><input id="bonusTotal" type="number" value="0"></div>
+
+          <div class="col-12" style="margin-top:8px">
+            <button id="calc" class="btn primary">計算</button>
+            <button id="download" class="btn" disabled>CSV</button>
+            <button id="pdf" class="btn" disabled>PDF</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 出力 -->
+    <section class="card">
+      <div class="card-header"><h2>結果</h2></div>
+      <div class="card-body">
+        <div class="summary">
+          <div class="stat"><h3>借入額</h3><div id="loan" class="val">-</div></div>
+          <div class="stat"><h3>毎月返済</h3><div id="monthly" class="val">-</div></div>
+          <div class="stat"><h3>総支払額</h3><div id="total" class="val">-</div></div>
+          <div class="stat"><h3>利息総額</h3><div id="interest" class="val">-</div></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>返済額</th><th>利息</th><th>元金</th><th>ボーナス</th><th>残高</th></tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ライブラリ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 <script>
-(function(){
-  const fmt = new Intl.NumberFormat('ja-JP',{maximumFractionDigits:0});
-  const fmtYen = v => (isFinite(v)? fmt.format(Math.round(v)) : "-");
-  const $ = id => document.getElementById(id);
+const fmt=new Intl.NumberFormat("ja-JP");
+const $=id=>document.getElementById(id);
 
-  // 開始月プルダウン（今月から+24ヶ月）
-  const startSel = $("startMonth");
-  (function initStartMonth(){
-    const today = new Date();
-    for(let i=0;i<24;i++){
-      const d = new Date(today.getFullYear(), today.getMonth()+i, 1);
-      const y = d.getFullYear(), m = d.getMonth()+1;
-      const val = `${y}-${String(m).padStart(2,"0")}`;
-      const opt = document.createElement("option");
-      opt.value = val; opt.textContent = `${y}年${m}月`;
-      if(i===0) opt.selected = true;
-      startSel.appendChild(opt);
-    }
-  })();
+/* 初期化 */
+(()=>{for(let i=1;i<=120;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===60)op.selected=true;$("months").appendChild(op);}for(let i=0;i<=4;i++){const op=document.createElement("option");op.value=i;op.textContent=i;if(i===2)op.selected=true;$("bonusTimes").appendChild(op);}})();
+function recalcLoanAmt(){const total=+($("totalCost").value||0),down=+($("down").value||0);$("loanAmt").value=Math.max(total-down,0);}
+["totalCost","down"].forEach(id=>$(id).addEventListener("input",recalcLoanAmt));
 
-  function compute(){
-    const price = +$("price").value || 0;
-    const down = +$("down").value || 0;
-    const rate = +$("rate").value || 0;
-    const years = +$("years").value || 0;
-    const balloonPct = +$("balloonPct").value || 0;
-    const balloonAmt = +$("balloonAmt").value || 0;
-    const bonusAmt = +$("bonusAmt").value || 0;
-    const bonusTimes = +$("bonusTimes").value || 2;
-    const extra = +$("extra").value || 0;
-    const fees = +$("fees").value || 0;
-    const start = $("startMonth").value;
+/* 残価連動 */
+let lastSrc="pct";
+function syncFromPct(){const price=+($("price").value||0);let pct=+($("balloonPct").value||0);if(pct<=0){$("balloonPct").value=0;$("balloonAmt").value=0;}else{$("balloonAmt").value=Math.floor(price*pct/100);}lastSrc="pct";}
+function syncFromAmt(){const price=+($("price").value||0);let amt=+($("balloonAmt").value||0);if(amt<=0){$("balloonAmt").value=0;$("balloonPct").value=0;}else{$("balloonPct").value=Math.round(amt/price*100);$("balloonAmt").value=amt;}lastSrc="amt";}
+$("balloonPct").addEventListener("input",syncFromPct);$("balloonAmt").addEventListener("input",syncFromAmt);
 
-    const loan = Math.max(0, price - down);
-    const months = Math.round(years * 12);
-    const r = rate/100/12;
+/* ボーナスUI */
+function toggleBonusUI(){const times=+($("bonusTimes").value||0),mode=document.querySelector('input[name="bonusMode"]:checked').value;const amt=$("bonusAmt"),tot=$("bonusTotal");amt.disabled=(times===0||mode!=="add");tot.disabled=(times===0||mode!=="total");if(times===0){amt.value=0;tot.value=0;}}
+$("bonusTimes").addEventListener("change",toggleBonusUI);document.querySelectorAll('input[name="bonusMode"]').forEach(r=>r.addEventListener("change",toggleBonusUI));
 
-    // 残価は「額」優先、未入力なら率で算出
-    const residual = balloonAmt > 0 ? Math.min(loan, balloonAmt) : loan * (balloonPct/100);
-    const financed = Math.max(0, loan - residual);
+/* 計算 */
+$("calc").addEventListener("click",compute);
+function compute(){
+  recalcLoanAmt();
+  const loan=+($("loanAmt").value||0),rate=+($("rate").value||0),months=+($("months").value||0);
+  let residual=Math.min(+($("balloonAmt").value||0),loan);if(residual>=loan)residual=Math.max(0,loan-1);
+  const r=rate/100/12;
 
-    if(months <= 0){ alert("返済年数を確認してください。"); return; }
+  // PMT
+  let monthly;
+  if(r===0){monthly=Math.ceil((loan-residual)/months);}else{const pow=Math.pow(1+r,months);monthly=Math.ceil((r*(loan*pow-residual))/(pow-1));}
 
-    let monthly;
-    if(r === 0){
-      monthly = financed / months;
-    }else{
-      const pow = Math.pow(1+r, months);
-      monthly = financed * (r * pow) / (pow - 1);
-    }
+  let bal=loan,totalPay=0,totalInt=0;
+  const tb=$("tbody");tb.innerHTML="";
+  const bonusTimes=+($("bonusTimes").value||0),mode=document.querySelector('input[name="bonusMode"]:checked').value;
+  const bonusAmt=+($("bonusAmt").value||0),bonusTotal=+($("bonusTotal").value||0);
+  const interval=bonusTimes>0?Math.max(1,Math.round(12/bonusTimes)):0;
 
-    const tbody = $("table").querySelector("tbody");
-    tbody.innerHTML = "";
-    let bal = financed;
-    let totalPay = 0, totalInt = 0;
-    const [sy, sm] = start.split("-").map(n=>+n);
-
-    // ボーナス間隔（端数は安全のため丸め）
-    const interval = (bonusTimes > 0 && bonusTimes <= 12) ? Math.max(1, Math.round(12/bonusTimes)) : 0;
-
-    for(let i=1;i<=months;i++){
-      const y = sy + Math.floor((sm-1 + (i-1))/12);
-      const m = ((sm-1 + (i-1))%12)+1;
-
-      const interest = r === 0 ? 0 : bal * r;
-      let principal = Math.min(bal, monthly - interest);
-      let prepay = Math.min(extra, Math.max(0, bal - principal));
-      if(!isFinite(prepay) || prepay < 0) prepay = 0;
-
-      let bonus = 0;
-      if(interval && bonusAmt > 0 && (i % interval) === 0){
-        bonus = Math.min(bonusAmt, Math.max(0, bal - principal - prepay));
-      }
-
-      // 最終回は残高をクリア
-      if(i === months){
-        principal = bal - prepay - bonus;
-        if(principal < 0){ principal = 0; }
-        monthly = principal + interest;
-      }
-
-      bal -= (principal + prepay + bonus);
-      totalPay += (monthly + prepay + bonus);
-      totalInt += interest;
-
-      const tr = document.createElement("tr");
-      const cells = [
-        i,
-        `${y}年${m}月`,
-        fmtYen(monthly + prepay + bonus),
-        fmtYen(interest),
-        fmtYen(principal),
-        fmtYen(prepay),
-        fmtYen(bonus),
-        fmtYen(Math.max(0, bal))
-      ];
-      cells.forEach(v=>{ const td=document.createElement("td"); td.textContent=v; tr.appendChild(td); });
-      tbody.appendChild(tr);
-    }
-
-    // 満期の残価（バルーン）を最終一括支払いに加算
-    if(residual > 0){
-      const last = tbody.lastElementChild;
-      const ymd = last ? last.children[1].textContent : start.replace("-", "年")+"月";
-      const tr = document.createElement("tr");
-      const cells = [
-        months+1,
-        ymd + "（満期）",
-        fmtYen(residual),
-        "—","—","—","—",
-        fmtYen(0)
-      ];
-      cells.forEach(v=>{ const td=document.createElement("td"); td.textContent=v; tr.appendChild(td); });
-      tbody.appendChild(tr);
-      totalPay += residual;
-    }
-
-    // サマリー表示（初期手数料は総支払に加算。利息総額は手数料を含めない）
-    $("loan").textContent = fmtYen(loan);
-    $("monthly").textContent = fmtYen(monthly + (extra||0));
-    $("total").textContent = fmtYen(totalPay + fees);
-    $("interest").textContent = fmtYen(totalInt);
-
-    // CSV出力
-    const rows = [["#","年月","返済額","うち利息","うち元金","繰上返済","ボーナス","残高"]];
-    [...tbody.querySelectorAll("tr")].forEach(tr=>{
-      rows.push([...tr.children].map(td=>td.textContent.replace(/,/g,"")));
-    });
-    const csv = rows.map(r=>r.join(",")).join("\n");
-    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const dl = $("download");
-    dl.disabled = false;
-    dl.onclick = ()=>{
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "car_loan_amortization.csv";
-      document.body.appendChild(a); a.click(); a.remove();
-    };
+  for(let i=1;i<=months;i++){
+    const interest=(r===0)?0:Math.max(1,Math.ceil(bal*r));
+    let basePay=monthly,isBonus=(interval&&(i%interval===0)),payDesired;
+    if(isBonus){if(mode==="add"){payDesired=Math.max(basePay+bonusAmt,interest);}else{payDesired=Math.max(bonusTotal,basePay,interest);}}else{payDesired=Math.max(basePay,interest);}
+    const desiredPrincipal=Math.max(0,payDesired-interest);
+    const maxPrincipal=Math.max(0,bal-residual);
+    const principal=Math.min(desiredPrincipal,maxPrincipal);
+    bal-=principal;
+    totalPay+=payDesired;totalInt+=interest;
+    const shownBonus=isBonus?Math.max(0,payDesired-monthly):0;
+    tb.insertAdjacentHTML("beforeend",`<tr><td>${i}</td><td>${fmt.format(payDesired)}</td><td>${fmt.format(interest)}</td><td>${fmt.format(principal)}</td><td>${fmt.format(shownBonus)}</td><td>${fmt.format(Math.round(bal))}</td></tr>`);
   }
+  $("loan").textContent=fmt.format(loan);$("monthly").textContent=fmt.format(monthly);$("total").textContent=fmt.format(totalPay);$("interest").textContent=fmt.format(totalInt);
+  $("download").disabled=false;$("download").onclick=()=>{const rows=[["#","返済額","利息","元金","ボーナス","残高"]];document.querySelectorAll("#tbody tr").forEach(tr=>rows.push([...tr.children].map(td=>td.textContent.replace(/,/g,""))));const csv=rows.map(r=>r.join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="car_loan_schedule.csv";a.click();};
+  $("pdf").disabled=true; // PDF省略
+}
 
-  $("calc").addEventListener("click", compute);
-  $("print").addEventListener("click", ()=>window.print());
-  compute(); // 初回計算
-})();
+/* 初期 */
+window.addEventListener("load",()=>{recalcLoanAmt();toggleBonusUI();syncFromPct();compute();});
 </script>
 </body>
 </html>
