@@ -368,10 +368,11 @@
     return {price, fees, down, tradein, rateY, months, startDate, bonusAmount, bonusType, bonusMonths, balloonPct, balloonYen, rounding, mode, balloonLast};
   }
 
-  function resolveBalloon(principal, last, pct, yen){
-    const base = vehicleBasePrice();
-    const fromPct = base * (pct/100);
-    const candidate = (last==='pct') ? fromPct : yen;
+  function resolveBalloon(principal, last, pct, yen, basePrice){
+    // 計算ロジックでは DOM を参照せず、渡された引数のみを使用する
+    const base = Math.max(0, +basePrice || 0); // 残価率の基準：車両本体価格（税込）
+    const fromPct = base * (Math.max(0, +pct || 0)/100);
+    const candidate = (last==='pct') ? fromPct : (Math.max(0, +yen || 0));
     const clamped = Math.max(0, Math.min(candidate, principal*0.9));
     return roundUnit(clamped, 100); // 常に百円単位
   }
@@ -380,7 +381,7 @@
     const r = inp.rateY/100/12;
     const gross = inp.price + inp.fees;
     const principal = Math.max(0, gross - inp.down - inp.tradein);
-    const balloon = resolveBalloon(principal, inp.balloonLast, inp.balloonPct, inp.balloonYen);
+    const balloon = resolveBalloon(principal, inp.balloonLast, inp.balloonPct, inp.balloonYen, inp.price);
     const bonusSet = new Set(inp.bonusMonths);
     const isTotal = inp.bonusType==='total';
 
@@ -577,7 +578,7 @@
   document.getElementById('run').addEventListener('click', ()=>{ const res = buildSchedule(getInputs()); render(res); if(!document.getElementById('detail').open){ document.getElementById('detail').open = true; } });
   document.getElementById('reset').addEventListener('click', ()=>{
     priceEl.value = 3000000; feesEl.value = 200000; downEl.value = 300000; tradeinEl.value = 0; rateEl.value = 3.9; monthsEl.value = 60; { const now = new Date(); startMonthEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; };
-    bonusAmountEl.value = 0; document.getElementById('bonusType').value = 'addon'; bonusJanEl.checked = true; bonusJulEl.checked = true; bonusAugEl.checked = false; bonusDecEl.checked = false;
+    bonusAmountEl.value = 0; document.getElementById('bonusType').value = 'addon'; bonusJanEl.checked = true; bonusJulEl.checked = false; bonusAugEl.checked = true; bonusDecEl.checked = false;
     balloonYenEl.value = 0; balloonPctEl.value = 0; roundingEl.value = 'nearest'; balloonLast='yen';
     document.querySelector('input[name="mode"][value="annuity"]').checked = true;
     document.querySelector('#tbl tbody').innerHTML='';
