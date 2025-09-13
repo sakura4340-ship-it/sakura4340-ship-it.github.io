@@ -147,11 +147,11 @@
           </div>
           <div class="chips" style="margin-top:8px">
             <label class="chip"><input type="checkbox" id="bonusJan" checked> 1月</label>
-            <label class="chip"><input type="checkbox" id="bonusJul" checked> 7月</label>
-            <label class="chip"><input type="checkbox" id="bonusAug"> 8月</label>
+            <label class="chip"><input type="checkbox" id="bonusJul"> 7月</label>
+            <label class="chip"><input type="checkbox" id="bonusAug" checked> 8月</label>
             <label class="chip"><input type="checkbox" id="bonusDec"> 12月</label>
           </div>
-          <div class="hint">「加算」＝通常返済に上乗せ／「総額指定」＝ボーナス月の総支払額を固定（最終回は残価を含む）。</div>
+          <div class="hint">「加算」＝通常返済に上乗せ／「総額指定」＝ボーナス月の総支払額を固定（最終回は残価のみ（利息0/ボーナス無視））。</div>
         </div>
         <div class="field">
           <label>残価設定</label>
@@ -384,52 +384,76 @@
     const bonusSet = new Set(inp.bonusMonths);
     const isTotal = inp.bonusType==='total';
 
+    const monthsAmort = balloon>0 ? Math.max(0, inp.months - 1) : inp.months; // 残価あり→最終回は残価のみ（利息0）
+
     if(inp.mode==='annuity'){
-      let lo = 0, hi = Math.max(1, principal / inp.months);
+      if(monthsAmort===0){
+        // 1回払い（残価のみ・利息0）
+        const rows=[{ idx:1, date:new Date(inp.startDate), pay: balloon, bonus:0, balloon, interest:0, principal: balloon, balance:0 }];
+        return { mode:'元利均等', principal, baseMonthly: 0, totalPay: balloon, totalInterest: 0, totalBonus: 0, balloon, rows };
+      }
+
+      // 二分探索で毎月の基礎返済額を決定（monthsAmort 回で残高が balloon になるように）
+      let lo = 0, hi = Math.max(1, principal / monthsAmort);
       const feasible = base => {
         let bal = principal; let d = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
-        for(let i=0;i<inp.months;i++){
+        for(let i=0;i<monthsAmort;i++){
           const isBonus = bonusSet.has(d.getMonth());
-          let pay = (isBonus ? (isTotal ? inp.bonusAmount : base + inp.bonusAmount) : base) + (i===inp.months-1? balloon:0);
+          let pay = isBonus ? (isTotal ? inp.bonusAmount : base + inp.bonusAmount) : base;
+          pay = roundingMode(pay, inp.rounding);
           const interest = bal * r; const prin = Math.max(0, pay - interest); bal -= prin; d = nextMonth(d);
         }
-        return bal <= 0;
+        return bal <= balloon + 1e-6; // 残高が残価以下ならOK
       };
       while(!feasible(hi)) hi *= 1.6, hi = Math.min(hi, principal*2 + 1e6);
       for(let k=0;k<64;k++){ const mid=(lo+hi)/2; feasible(mid)? hi=mid: lo=mid; }
       const baseMonthly = hi;
 
       const rows = []; let bal = principal, totalPay=0, totalInt=0, totalBonus=0; let d = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
-      for(let i=0;i<inp.months;i++){
+      for(let i=0;i<monthsAmort;i++){
         const isBonus = bonusSet.has(d.getMonth());
         const bonusDisp = isBonus && !isTotal ? inp.bonusAmount : 0;
-        let pay = (isBonus ? (isTotal ? inp.bonusAmount : baseMonthly + inp.bonusAmount) : baseMonthly) + (i===inp.months-1? balloon:0);
+        let pay = isBonus ? (isTotal ? inp.bonusAmount : baseMonthly + inp.bonusAmount) : baseMonthly;
+        pay = roundingMode(pay, inp.rounding);
         const interest = bal * r; let prin = Math.max(0, pay - interest);
-        pay = roundingMode(pay, inp.rounding); const adjust = pay - (interest + prin); prin += adjust;
-        if(i===inp.months-1){ prin = bal; pay = roundingMode(interest + prin, inp.rounding); }
+        const adjust = pay - (interest + prin); prin += adjust; // 端数調整
         bal = Math.max(0, bal - prin);
         totalPay += pay; totalInt += Math.max(0, interest); totalBonus += bonusDisp;
-        rows.push({ idx:i+1, date:new Date(d), pay, bonus: bonusDisp, balloon:(i===inp.months-1? balloon:0), interest, principal: prin, balance: bal }); d = nextMonth(d);
+        rows.push({ idx:i+1, date:new Date(d), pay, bonus: bonusDisp, balloon:0, interest, principal: prin, balance: bal }); d = nextMonth(d);
       }
-      return { mode:'元利均等', principal, baseMonthly: roundingMode(baseMonthly, inp.rounding), totalPay: roundingMode(totalPay, 'nearest'), totalInterest: Math.round(totalInt), totalBonus, balloon, rows };
+      // 最終回：残価のみ（利息0／ボーナス無視）
+      if(balloon>0){
+        const idx = monthsAmort + 1;
+        rows.push({ idx, date:new Date(d), pay: balloon, bonus:0, balloon, interest:0, principal: balloon, balance: 0 });
+        totalPay += balloon;
+      }
+      return { mode:'元利均等', principal, baseMonthly: roundingMode(baseMonthly, inp.rounding), totalPay: Math.round(totalPay), totalInterest: Math.round(totalInt), totalBonus, balloon, rows };
 
     } else {
+      if(monthsAmort===0){
+        const rows=[{ idx:1, date:new Date(inp.startDate), pay: balloon, bonus:0, balloon, interest:0, principal: balloon, balance:0 }];
+        return { mode:'元金均等', principal, baseMonthly: 0, totalPay: balloon, totalInterest: 0, totalBonus: 0, balloon, rows };
+      }
       const rows = []; let bal = principal, totalPay=0, totalInt=0, totalBonus=0; let d = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
-      const monthlyPrincipal = Math.max(0, (principal - balloon) / inp.months); let firstBaseMonthly = 0;
-      for(let i=0;i<inp.months;i++){
-        const isBonus = bonusSet.has(d.getMonth()); const interest = bal * r; let bonusDisp = 0; let prin = (i===inp.months-1 ? bal : monthlyPrincipal);
+      const monthlyPrincipal = Math.max(0, (principal - balloon) / monthsAmort); let firstBaseMonthly = 0;
+      for(let i=0;i<monthsAmort;i++){
+        const isBonus = bonusSet.has(d.getMonth()); const interest = bal * r; let bonusDisp = 0; let prin = (i===monthsAmort-1 ? Math.max(0, bal - 0) - 0 : monthlyPrincipal);
         let targetPay;
-        if(isBonus && isTotal){ targetPay = inp.bonusAmount + (i===inp.months-1? balloon:0); }
-        else { bonusDisp = isBonus ? inp.bonusAmount : 0; targetPay = prin + interest + bonusDisp + (i===inp.months-1? balloon:0); }
+        if(isBonus && isTotal){ targetPay = inp.bonusAmount; }
+        else { bonusDisp = isBonus ? inp.bonusAmount : 0; targetPay = prin + interest + bonusDisp; }
         let pay = roundingMode(targetPay, inp.rounding);
-        prin = pay - interest - (i===inp.months-1? balloon:0) - (isBonus && !isTotal ? bonusDisp : 0);
-        if(i===inp.months-1){ prin = bal; pay = roundingMode(interest + prin + (isBonus && !isTotal ? bonusDisp:0) + (i===inp.months-1? balloon:0), inp.rounding); }
+        prin = pay - interest - (isBonus && !isTotal ? bonusDisp : 0);
         bal = Math.max(0, bal - prin);
         totalPay += pay; totalInt += Math.max(0, interest); totalBonus += bonusDisp;
         if(i===0) firstBaseMonthly = roundingMode(prin + interest, inp.rounding);
-        rows.push({ idx:i+1, date:new Date(d), pay, bonus: bonusDisp, balloon:(i===inp.months-1? balloon:0), interest, principal: prin, balance: bal }); d = nextMonth(d);
+        rows.push({ idx:i+1, date:new Date(d), pay, bonus: bonusDisp, balloon:0, interest, principal: prin, balance: bal }); d = nextMonth(d);
       }
-      return { mode:'元金均等', principal, baseMonthly: firstBaseMonthly, totalPay: roundingMode(totalPay, 'nearest'), totalInterest: Math.round(totalInt), totalBonus, balloon, rows };
+      if(balloon>0){
+        const idx = monthsAmort + 1;
+        rows.push({ idx, date:new Date(d), pay: balloon, bonus:0, balloon, interest:0, principal: balloon, balance: 0 });
+        totalPay += balloon;
+      }
+      return { mode:'元金均等', principal, baseMonthly: firstBaseMonthly, totalPay: Math.round(totalPay), totalInterest: Math.round(totalInt), totalBonus, balloon, rows };
     }
   }
 
@@ -488,8 +512,22 @@
 
   // PDF（画面と別レイアウトでA4/縦）
   function printableHTML(res){
-    const rows = res.rows.map(r=>`<tr><td>${r.idx}</td><td>${fmtDate(r.date)}</td><td style="text-align:right">¥${yen(Math.round(r.pay))}</td><td style="text-align:right">${r.bonus?`¥${yen(r.bonus)}`:'—'}</td><td style="text-align:right">${r.balloon?`¥${yen(r.balloon)}`:'—'}</td><td style="text-align:right">¥${yen(Math.round(r.interest))}</td><td style="text-align:right">¥${yen(Math.round(r.principal))}</td><td style="text-align:right">¥${yen(Math.round(r.balance))}</td></tr>`).join('');
-    return `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"/>
+    const rows = res.rows.map(r=>{
+      const bonusCell = r.bonus ? '¥'+yen(r.bonus) : '—';
+      const balloonCell = r.balloon ? '¥'+yen(r.balloon) : '—';
+      return '<tr>'+
+        '<td>'+r.idx+'</td>'+
+        '<td>'+fmtDate(r.date)+'</td>'+
+        '<td style="text-align:right">¥'+yen(Math.round(r.pay))+'</td>'+
+        '<td style="text-align:right">'+bonusCell+'</td>'+
+        '<td style="text-align:right">'+balloonCell+'</td>'+
+        '<td style="text-align:right">¥'+yen(Math.round(r.interest))+'</td>'+
+        '<td style="text-align:right">¥'+yen(Math.round(r.principal))+'</td>'+
+        '<td style="text-align:right">¥'+yen(Math.round(r.balance))+'</td>'+
+      '</tr>';
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"/>
     <title>返済予定表PDF</title>
     <style>
       @page{ size:A4; margin:18mm; }
@@ -513,16 +551,32 @@
     </div>
     <table><thead><tr><th>回</th><th>支払日</th><th>支払額</th><th>ボーナス</th><th>残価</th><th>利息</th><th>元金</th><th>残高</th></tr></thead><tbody>${rows}</tbody></table>
     <footer>作成日時: ${new Date().toLocaleString('ja-JP')}</footer>
-    <script>setTimeout(()=>window.print(), 50);</script>
+    <script>setTimeout(()=>window.print(), 50);<\/script>
     </body></html>`;
+
+    // 万一のトランケーション対策：閉じタグ保証
+    const trimmed = html.trim();
+    return /<\/html>\s*$/i.test(trimmed) ? trimmed : (trimmed + '\n</body></html>');
   }
 
-  function openPDF(){ const res = buildSchedule(getInputs()); const w = window.open('', '_blank'); w.document.write(printableHTML(res)); w.document.close(); }
+  function openPDF(){
+    const res = buildSchedule(getInputs());
+    const html = printableHTML(res);
+    const w = window.open('', '_blank');
+    try{
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    }catch(err){
+      console.error('PDFウィンドウ描画エラー', err);
+      alert('PDF描画に失敗しました。ポップアップブロックを解除して再実行してください。');
+    }
+  }
 
   // Run/Reset/Export/PDF
   document.getElementById('run').addEventListener('click', ()=>{ const res = buildSchedule(getInputs()); render(res); if(!document.getElementById('detail').open){ document.getElementById('detail').open = true; } });
   document.getElementById('reset').addEventListener('click', ()=>{
-    priceEl.value = 3000000; feesEl.value = 200000; downEl.value = 300000; tradeinEl.value = 0; rateEl.value = 3.9; monthsEl.value = 60; startMonthEl.value = '';
+    priceEl.value = 3000000; feesEl.value = 200000; downEl.value = 300000; tradeinEl.value = 0; rateEl.value = 3.9; monthsEl.value = 60; { const now = new Date(); startMonthEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; };
     bonusAmountEl.value = 0; document.getElementById('bonusType').value = 'addon'; bonusJanEl.checked = true; bonusJulEl.checked = true; bonusAugEl.checked = false; bonusDecEl.checked = false;
     balloonYenEl.value = 0; balloonPctEl.value = 0; roundingEl.value = 'nearest'; balloonLast='yen';
     document.querySelector('input[name="mode"][value="annuity"]').checked = true;
@@ -532,7 +586,7 @@
   document.getElementById('print').addEventListener('click', openPDF);
   document.getElementById('export').addEventListener('click', ()=>{ const res = buildSchedule(getInputs()); const csv = toCSV(res); const now = new Date(); const name = `auto-loan-schedule_pro_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`; download(name, csv); });
 
-  // --- Self Tests (invariants + sync + price-base + typing/clamp + csv + rounding100 + aug-bonus) ---
+  // --- Self Tests (既存維持 + 追加でHTML閉じタグ検証) ---
   function approx(a,b,eps=1){ return Math.abs(a-b) <= eps; }
   function runSelfTests(){
     const tests = [];
@@ -558,14 +612,27 @@
     const csv9 = toCSV(r4); tests.push( csv9.includes('\nサマリー\n') );
     // T10: 8月ボーナスの指定が反映される
     const inp10 = { ...inp1, months:12, bonusAmount:77777, bonusMonths:[7] }; const r10 = buildSchedule(inp10); tests.push( r10.rows.filter(x=>x.bonus>0).length===1 );
+    // T11: CSVに行数が期待通り（ヘッダ+明細+空行+サマリー見出し+サマリー6行）
+    const expectedLines = 1 + r4.rows.length + 1 + 1 + 6; // header + rows + blank + 'サマリー' + 6 meta rows
+    tests.push( toCSV(r4).split('\n').length >= expectedLines );
+    // T12: PDF用HTMLの閉じタグ存在（Unexpected end of input 対策）
+    const pdfHTML = printableHTML(r4);
+    tests.push(/<\/html>\s*$/i.test(pdfHTML));
+    // T13: DOMParserでHTMLが解釈できtitle/bodyが存在
+    try{
+      const doc = new DOMParser().parseFromString(pdfHTML, 'text/html');
+      tests.push(!!doc.querySelector('html') && !!doc.querySelector('body') && !!doc.querySelector('title'));
+    }catch(e){ tests.push(false); }
 
     const ok = tests.every(Boolean);
     const el = document.getElementById('testStatus');
-    el.textContent = ok ? '✅ 内部テスト: 合格（レスポンシブ＆可読性UP／百円丸め・8月ボーナス・PDF出力）' : '⚠️ 内部テスト: 失敗があります（F12 → Console）';
+    el.textContent = ok ? '✅ 内部テスト: 合格（PDF閉じタグ検証を追加）' : '⚠️ 内部テスト: 失敗があります（F12 → Console）';
     if(!ok) console.warn('SelfTests', tests);
   }
 
   enhanceNumericInputs();
+  // default start month = today on load
+  (function(){ const now=new Date(); startMonthEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; })();
   // initial
   document.getElementById('run').click();
   runSelfTests();
