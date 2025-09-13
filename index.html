@@ -37,9 +37,9 @@
   .field label{ font-size: clamp(12.5px, .6vw + 10px, 14px); color:var(--muted) }
   .field input, .field select{
     background:#0a1124; border:1px solid #1b2743; color:#e6ecf3; border-radius:12px; padding:14px 14px; outline:none; width:100%; max-width:100%; min-width:0;
-    font-size: 18px; /* 視認性向上＆iOSズーム防止 */
+    font-size: 20px; /* 視認性向上＆iOSズーム防止（ベースを上げました） */
   }
-  .field input[type="number"]{ text-align:right; font-variant-numeric: tabular-nums; letter-spacing:.2px }
+  .field input[type="number"]{ text-align:right; font-variant-numeric: tabular-nums; letter-spacing:.3px; font-size:22px }
   .hint{ font-size: clamp(12px, .5vw + 10px, 13px); color:#7b879a }
   .muted{ color: var(--muted) }
   .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:12px }
@@ -83,6 +83,14 @@
   input[type=number]::-webkit-outer-spin-button,
   input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
   input[type=number]{ -moz-appearance:textfield; appearance:textfield }
+.chip.disabled{ opacity:.5; cursor:not-allowed; }
+  /* Responsive bigger inputs for small screens */
+  @media (max-width: 700px){
+    .field input, .field select{ font-size: clamp(22px, 6vw, 30px); padding:16px 16px; min-height:56px }
+    .field input[type="number"]{ font-size: clamp(26px, 8vw, 36px) }
+    .field label{ font-size: clamp(14px, 3.6vw, 18px) }
+    button{ min-height:54px; font-size:17px }
+  }
 </style>
 </head>
 <body>
@@ -290,6 +298,22 @@
   const balloonYenEl = document.getElementById('balloonYen');
   const balloonPctEl = document.getElementById('balloonPct');
   const roundingEl = document.getElementById('rounding');
+
+  // --- Bonus month selection: max 2 ---
+  function setupBonusLimit(){
+    const boxes = [bonusJanEl, bonusJulEl, bonusAugEl, bonusDecEl];
+    const apply = ()=>{
+      const checked = boxes.filter(b=>b.checked);
+      const over = checked.length >= 2;
+      boxes.forEach(b=>{
+        if(!b.checked){ b.disabled = over; if(b.parentElement) b.parentElement.classList.toggle('disabled', over); }
+        else { b.disabled = false; if(b.parentElement) b.parentElement.classList.remove('disabled'); }
+      });
+    };
+    boxes.forEach(b=> b.addEventListener('change', apply));
+    apply();
+    return apply;
+  }
 
   const k_principal = document.getElementById('k_principal');
   const k_monthly = document.getElementById('k_monthly');
@@ -583,6 +607,7 @@
     document.querySelector('input[name="mode"][value="annuity"]').checked = true;
     document.querySelector('#tbl tbody').innerHTML='';
     k_principal.textContent='-'; k_monthly.textContent='-'; k_total.textContent='-'; k_interest.textContent='-'; k_mode.textContent='元利均等';
+    if(window.applyBonusLimit) window.applyBonusLimit();
   });
   document.getElementById('print').addEventListener('click', openPDF);
   document.getElementById('export').addEventListener('click', ()=>{ const res = buildSchedule(getInputs()); const csv = toCSV(res); const now = new Date(); const name = `auto-loan-schedule_pro_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`; download(name, csv); });
@@ -625,6 +650,17 @@
       tests.push(!!doc.querySelector('html') && !!doc.querySelector('body') && !!doc.querySelector('title'));
     }catch(e){ tests.push(false); }
 
+    // T16: UI 制限: ボーナス月は最大2つまで（2つ選択で他がdisabled、1つに戻すと有効化）
+    try{
+      const boxes = [document.getElementById('bonusJan'), document.getElementById('bonusJul'), document.getElementById('bonusAug'), document.getElementById('bonusDec')];
+      boxes.forEach(b=>{ b.checked=false; b.dispatchEvent(new Event('change')); });
+      boxes[0].checked=true; boxes[0].dispatchEvent(new Event('change'));
+      boxes[2].checked=true; boxes[2].dispatchEvent(new Event('change'));
+      const disabledAfter2 = boxes.filter(b=>!b.checked).every(b=>b.disabled===true);
+      boxes[2].checked=false; boxes[2].dispatchEvent(new Event('change'));
+      const reenabled = boxes.filter(b=>!b.checked).every(b=>b.disabled===false);
+      tests.push(disabledAfter2 && reenabled);
+    }catch(e){ tests.push(false); }
     const ok = tests.every(Boolean);
     const el = document.getElementById('testStatus');
     el.textContent = ok ? '✅ 内部テスト: 合格（PDF閉じタグ検証を追加）' : '⚠️ 内部テスト: 失敗があります（F12 → Console）';
@@ -634,6 +670,8 @@
   enhanceNumericInputs();
   // default start month = today on load
   (function(){ const now=new Date(); startMonthEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; })();
+  // enforce bonus-month selection limit (max 2)
+  window.applyBonusLimit = setupBonusLimit();
   // initial
   document.getElementById('run').click();
   runSelfTests();
