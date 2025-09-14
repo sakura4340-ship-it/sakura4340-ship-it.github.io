@@ -105,6 +105,21 @@
     #bonusField .chips{ max-width: 420px; }
     .grid2:has(#balloonYen){ grid-template-columns: 1.3fr .7fr; }
   }
+
+.last-hint{font-size:11px;color:#9aa4b2;display:flex;gap:8px;align-items:center;margin-top:6px}
+.last-hint .apply{
+  padding:2px 8px;border-radius:10px;border:1px solid #2b3a62;
+  background:linear-gradient(180deg,rgba(110,168,254,.18),rgba(110,168,254,.10));
+  color:#cfe1ff;cursor:pointer;user-select:none
+}
+.restore-all{
+  padding:10px 12px;border-radius:12px;border:1px solid #29407a;
+  background:linear-gradient(180deg,#0f2246,#0e1d3a);color:#dbe7ff;cursor:pointer
+}
+.restore-all:disabled{opacity:.6;cursor:not-allowed}
+  
+
+
 </style>
 </head>
 <body>
@@ -766,6 +781,143 @@
     if(i===1){ const res = buildSchedule(getInputs()); draw(res.rows.map(r=>r.balance)); }
   }));
 })();
+
+// === 前回値ヒント＆復元 =========================================
+const SAVE_KEYS = [
+  "price","totalCost","down","rate","months",
+  "balloonPct","balloonAmt","bonusTimes","bonusAmt","bonusTotal","bonusMode"
+];
+const STORE_KEY = "carloan:last-inputs-v1";
+
+function loadLastInputs(){
+  try{ return JSON.parse(localStorage.getItem(STORE_KEY)||"{}"); }catch(_){ return {}; }
+}
+function saveCurrentInputs(){
+  const data = {};
+  SAVE_KEYS.forEach(k=>{
+    if(k==="bonusMode"){
+      const mode = document.querySelector('input[name="bonusMode"]:checked')?.value||"add";
+      data[k]=mode;
+    }else{
+      const el = $(k);
+      if(el) data[k] = el.value;
+    }
+  });
+  localStorage.setItem(STORE_KEY, JSON.stringify(data));
+}
+function formatHintVal(k,val){
+  if(val==null || val==="") return "";
+  const moneyKeys = ["price","totalCost","down","loanAmt","balloonAmt","bonusAmt","bonusTotal"];
+  if(moneyKeys.includes(k)) return fmt.format(+val)+" 円";
+  if(k==="rate") return (+val)+" %";
+  if(k==="months") return (+val)+" ヶ月";
+  if(k==="balloonPct") return (+val)+" %";
+  if(k==="bonusTimes") return (+val)+" 回";
+  if(k==="bonusMode") return (val==="add"?"加算額指定":"ボーナス月総額");
+  return val;
+}
+function renderLastHints(){
+  const last = loadLastInputs();
+  SAVE_KEYS.forEach(k=>{
+    if(k==="bonusMode") return; // ラジオは共通ヒントで出さない
+    const el = $(k);
+    if(!el) return;
+    // 1回だけヒントDOMを差す
+    let hint = el.parentElement.querySelector(".last-hint");
+    if(!hint){
+      hint = document.createElement("div");
+      hint.className = "last-hint";
+      el.parentElement.appendChild(hint);
+    }
+    const prev = last[k];
+    if(prev==null || prev===""){ hint.style.display="none"; return; }
+    hint.style.display = "flex";
+    hint.innerHTML = `
+      <span>前回: <b>${formatHintVal(k, prev)}</b></span>
+      <button type="button" class="apply">前回値を適用</button>
+    `;
+    hint.querySelector(".apply").onclick = ()=>{
+      el.value = prev;
+      // 依存関係のある項目は連動
+      if(k==="balloonAmt") syncFromAmt();
+      if(k==="balloonPct") syncFromPct();
+      if(k==="price")      (lastSrc==="amt"?syncFromAmt():syncFromPct());
+      if(k==="totalCost"||k==="down") recalcLoanAmt();
+      if(k==="bonusTimes"||k==="bonusTotal"||k==="bonusAmt"){
+        toggleBonusUI();
+      }
+      el.dispatchEvent(new Event("input",{bubbles:true}));
+    };
+  });
+  // ラジオの前回値も復元ボタンで対応
+}
+
+function addRestoreAllButton(){
+  const actionsRow = document.querySelector(".card .grid .col-12 .btn.primary")?.parentElement;
+  if(!actionsRow) return;
+  // すでに配置済みならスキップ
+  if(actionsRow.querySelector(".restore-all")) return;
+
+  const btn = document.createElement("button");
+  btn.className = "btn restore-all";
+  btn.textContent = "前回の入力をすべて復元";
+  actionsRow.insertBefore(btn, actionsRow.firstChild.nextSibling); // 「計算する」の右隣
+
+  const last = loadLastInputs();
+  btn.disabled = Object.keys(last).length===0;
+
+  btn.onclick = ()=>{
+    const last = loadLastInputs();
+    SAVE_KEYS.forEach(k=>{
+      if(!(k in last)) return;
+      if(k==="bonusMode"){
+        const r = document.querySelector(`input[name="bonusMode"][value="${last[k]}"]`);
+        if(r){ r.checked = true; }
+      }else{
+        const el = $(k);
+        if(el){ el.value = last[k]; }
+      }
+    });
+    // 依存リフレッシュ
+    recalcLoanAmt();
+    if(lastSrc==="amt") syncFromAmt(); else syncFromPct();
+    toggleBonusUI();
+    renderLastHints();
+  };
+}
+
+// 入力変化でオートセーブ（軽いデバウンス）
+let saveTimer=null;
+function attachAutoSave(){
+  const inputs = [
+    "price","totalCost","down","rate","months",
+    "balloonPct","balloonAmt","bonusTimes","bonusAmt","bonusTotal"
+  ].map(id=>$(id)).filter(Boolean);
+  inputs.forEach(el=>{
+    el.addEventListener("input", ()=>{
+      clearTimeout(saveTimer);
+      saveTimer=setTimeout(saveCurrentInputs, 300);
+    });
+  });
+  document.querySelectorAll('input[name="bonusMode"]').forEach(r=>{
+    r.addEventListener("change", ()=>{
+      saveCurrentInputs();
+      toggleBonusUI();
+      renderLastHints();
+    });
+  });
+
+  // 「計算する」クリック時にも保存
+  $("calc")?.addEventListener("click", ()=>{ saveCurrentInputs(); renderLastHints(); });
+}
+
+// 初期化（あなたの既存 onload の最後にぶら下げてもOK）
+window.addEventListener("load", ()=>{
+  renderLastHints();
+  addRestoreAllButton();
+  attachAutoSave();
+});
 </script>
+  
 </body>
 </html>
