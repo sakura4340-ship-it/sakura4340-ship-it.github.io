@@ -105,6 +105,14 @@
   .spinV .step:active{ transform: translateY(1px); }
   @media (max-width:700px){ .spinV .step{ width:56px; height:32px; font-size:18px } }
   @media (min-width:701px){ .spinV{ max-width:240px; } }
+  /* === override: bonus narrower, residual wider === */
+  @media (min-width:701px){
+    .row-bonus-resid{ grid-template-columns: .68fr 1.32fr; }
+    #bonusAmount{ max-width: 200px; }
+    #bonusField select{ max-width: 220px; }
+    #bonusField .chips{ max-width: 420px; }
+    .grid2:has(#balloonYen){ grid-template-columns: 1.3fr .7fr; }
+  }
 </style>
 </head>
 <body>
