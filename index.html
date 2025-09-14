@@ -39,6 +39,12 @@
     background:#0a1124; border:1px solid #1b2743; color:#e6ecf3; border-radius:12px; padding:14px 14px; outline:none; width:100%; max-width:100%; min-width:0;
     font-size: 20px; /* 視認性向上＆iOSズーム防止 */
   }
+  /* stepper for rate */
+  .spin{ display:flex; align-items:stretch; gap:8px; width:100%; }
+  .spin input{ flex:1; }
+  .spin .step{ appearance:none; border:1px solid #1b2743; background:#0a1124; color:#e6ecf3; border-radius:10px; padding:0 8px; min-width:44px; font-size:18px; font-weight:800; line-height:1; display:grid; place-items:center; cursor:pointer }
+  .spin .step:active{ transform: translateY(1px); }
+  @media (max-width:700px){ .spin .step{ min-height:56px; min-width:56px; font-size:22px } }
   .field input[type="number"]{ text-align:right; font-variant-numeric: tabular-nums; letter-spacing:.3px; font-size:22px }
   .hint{ font-size: clamp(12px, .5vw + 10px, 13px); color:#7b879a }
   .muted{ color: var(--muted) }
@@ -84,12 +90,21 @@
   }
   /* ==== bonus/residual layout tweak ==== */
   @media (min-width: 701px){
-    .row-bonus-resid{ grid-template-columns: .82fr 1.18fr; }
-    #bonusField input[type="number"]{ max-width: 240px; }
-    #bonusField select{ max-width: 260px; }
-    #bonusField .chips{ max-width: 520px; }
+    /* 3列の合計幅が左カラム(≈500px)を超えないように固定上限を設定 */
+    .row3{ grid-template-columns: minmax(110px, .9fr) minmax(110px, .9fr) minmax(220px, 1.2fr); }
+    #months{ max-width: 120px; }
+    .spin{ max-width: 220px; }
+    #rate{ width:100%; }
+    #startMonth{ min-width: 220px; width: 100%; }
   }
-  .chip.disabled{ opacity:.5; cursor:not-allowed; }
+  /* stepper for rate (vertical right) */
+  .spinV{ position:relative; display:flex; align-items:stretch; width:100%; }
+  .spinV input{ flex:1; padding-right:64px; }
+  .spinV .vstep{ position:absolute; top:50%; right:8px; transform:translateY(-50%); display:flex; flex-direction:column; gap:6px; }
+  .spinV .step{ appearance:none; border:1px solid #1b2743; background:#0a1124; color:#e6ecf3; border-radius:8px; width:44px; height:26px; font-size:14px; font-weight:800; line-height:1; display:grid; place-items:center; cursor:pointer }
+  .spinV .step:active{ transform: translateY(1px); }
+  @media (max-width:700px){ .spinV .step{ width:56px; height:32px; font-size:18px } }
+  @media (min-width:701px){ .spinV{ max-width:240px; } }
 </style>
 </head>
 <body>
@@ -130,7 +145,14 @@
       <div class="row3">
         <div class="field">
           <label>実質年率（%）</label>
-          <input type="text" id="rate" value="3.9" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off">
+          <div class="spinV">
+            <input type="text" id="rate" value="3.9" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off">
+            <div class="vstep" aria-hidden="false">
+              <button type="button" class="step up" id="rateInc" aria-label="年率を0.1上げる">▲</button>
+              <button type="button" class="step down" id="rateDec" aria-label="年率を0.1下げる">▼</button>
+            </div>
+          </div>
+        </div>
         </div>
         <div class="field">
           <label>返済回数（月）</label>
@@ -334,6 +356,15 @@
   const rateEl = document.getElementById('rate');
   // 実質年率は小数点「.」のみ許可
   enforceDotDecimalOnly(rateEl);
+  // ±ステッパー
+  const rateDecBtn = document.getElementById('rateDec');
+  const rateIncBtn = document.getElementById('rateInc');
+  const minRate = 0, maxRate = 99.99, stepRate = 0.1;
+  const parseRate = ()=>{ const v = (rateEl.value||'').replace(/[^0-9.]/g,''); return parseFloat(v)||0; };
+  const setRate = (v)=>{ v = Math.min(maxRate, Math.max(minRate, Math.round(v*100)/100)); rateEl.value = String(v); rateEl.dispatchEvent(new Event('input', {bubbles:true})); };
+  const setRateBy = (d)=> setRate(parseRate() + d);
+  rateDecBtn.addEventListener('click', ()=> setRateBy(-stepRate));
+  rateIncBtn.addEventListener('click', ()=> setRateBy(+stepRate));
   const monthsEl = document.getElementById('months');
   const startMonthEl = document.getElementById('startMonth');
   const bonusAmountEl = document.getElementById('bonusAmount');
