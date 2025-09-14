@@ -118,7 +118,7 @@
     .row3 {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 12px;
+      gap: 0px;
       margin-bottom: 12px
     }
 
@@ -147,6 +147,40 @@
       min-width: 0;
       font-size: 20px;
       /* 視認性向上＆iOSズーム防止 */
+    }
+
+    /* 年率の小型±ボタンUI */
+    .num-control {
+      display: flex;
+      align-items: center;
+    }
+
+    .num-control input {
+      flex: 1;
+      padding-right: 4px;
+      text-align: right;
+      font-variant-numeric: tabular-nums
+    }
+
+    .num-control .spin {
+      display: flex;
+      flex-direction: column;
+      margin-left: 4px;
+      gap: 4px
+    }
+
+    .num-control .spin button {
+      appearance: none;
+      border: 1px solid #1b2743;
+      background: #0a1124;
+      color: #e6ecf3;
+      width: 20px;
+      height: 22px;
+      font-size: 12px;
+      line-height: 1;
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 0;
     }
 
     .hint {
@@ -383,9 +417,15 @@
         min-height: 54px;
         font-size: 17px
       }
+
+      .num-control .spin button {
+        width: 36px;
+        height: 26px;
+        font-size: 13px
+      }
     }
 
-    /* ==== layout tweaks: start month wider / months & rate narrower ==== */
+    /* layout tweaks */
     @media (min-width: 701px) {
       .row3 {
         grid-template-columns: minmax(110px, .9fr) minmax(110px, .9fr) minmax(220px, 1.2fr);
@@ -396,70 +436,15 @@
       }
 
       #rateWrap {
-        max-width: 240px;
+        max-width: 300px;
       }
 
       #startMonth {
-        min-width: 220px;
+        min-width: 200px;
         width: 100%;
       }
     }
 
-    /* vertical stepper for rate */
-    .spinV {
-      position: relative;
-      display: flex;
-      align-items: stretch;
-      width: 100%;
-    }
-
-    .spinV input {
-      flex: 1;
-      padding-right: 64px;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: .3px
-    }
-
-    .spinV .vstep {
-      position: absolute;
-      top: 50%;
-      right: 8px;
-      transform: translateY(-50%);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .spinV .step {
-      appearance: none;
-      border: 1px solid #1b2743;
-      background: #0a1124;
-      color: #e6ecf3;
-      border-radius: 8px;
-      width: 44px;
-      height: 26px;
-      font-size: 14px;
-      font-weight: 800;
-      line-height: 1;
-      display: grid;
-      place-items: center;
-      cursor: pointer
-    }
-
-    .spinV .step:active {
-      transform: translateY(1px);
-    }
-
-    @media (max-width:700px) {
-      .spinV .step {
-        width: 56px;
-        height: 32px;
-        font-size: 18px
-      }
-    }
-
-    /* bonus narrower / residual wider */
     @media (min-width:701px) {
       .row-bonus-resid {
         grid-template-columns: .68fr 1.32fr;
@@ -482,6 +467,18 @@
       }
     }
 
+    /* ネイティブnumberスピン非表示 */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+
+    /* 前回入力アシスト */
     .assist {
       display: block;
       font-size: 11px;
@@ -509,7 +506,7 @@
   <main>
     <section class="card" id="inputs">
       <h2>入力（日本国内向け）</h2>
-      <div class="content">
+      <div class="content"><!-- ← content を最後まで1つに統一 -->
         <div class="row">
           <div class="field">
             <label>車両本体価格 <span class="muted">（税込想定）</span></label>
@@ -536,11 +533,11 @@
         <div class="row3">
           <div class="field" id="rateWrap">
             <label>実質年率（%）</label>
-            <div class="spinV">
-              <input type="text" id="rate" value="3.9" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off">
-              <div class="vstep" aria-hidden="false">
-                <button type="button" class="step up" id="rateInc" aria-label="年率を0.1上げる">▲</button>
-                <button type="button" class="step down" id="rateDec" aria-label="年率を0.1下げる">▼</button>
+            <div class="num-control">
+              <input id="rate" type="number" value="3.9" min="0" max="30" step="0.1" inputmode="decimal">
+              <div class="spin">
+                <button type="button" onclick="stepRate(0.1)">＋</button>
+                <button type="button" onclick="stepRate(-0.1)">－</button>
               </div>
             </div>
           </div>
@@ -606,7 +603,8 @@
             </div>
           </div>
         </div>
-      </div>
+      </div><!-- /.content -->
+
       <div class="actions">
         <button id="run">計算する</button>
         <button id="reset" class="secondary">リセット</button>
@@ -766,15 +764,6 @@
       // 円入力：日本語の「、」「，」等は許容→内部で除去
       [priceEl, feesEl, downEl, tradeinEl, bonusAmountEl, balloonYenEl].forEach(el => enforceNumericMoney(el));
 
-      // レートの上下ボタン
-      const rateDecBtn = document.getElementById('rateDec');
-      const rateIncBtn = document.getElementById('rateInc');
-      const minRate = 0, maxRate = 99.99, stepRate = 0.1;
-      const parseRate = () => { const v = (rateEl.value || '').replace(/[^0-9.]/g, ''); return parseFloat(v) || 0; };
-      const setRate = (v) => { v = Math.min(maxRate, Math.max(minRate, Math.round(v * 100) / 100)); rateEl.value = String(v); rateEl.dispatchEvent(new Event('input', { bubbles: true })); };
-      rateDecBtn.addEventListener('click', () => setRate(parseRate() - stepRate));
-      rateIncBtn.addEventListener('click', () => setRate(parseRate() + stepRate));
-
       // Bonus month selection: max 2
       function setupBonusLimit() {
         const boxes = Array.from(document.querySelectorAll('#bonusField input[type="checkbox"]'));
@@ -812,7 +801,7 @@
         return +priceEl.value || 0;
       }
 
-      // Residual bi-directional
+      // 残価 連動
       let balloonLast = 'yen'; // or 'pct'
       let syncing = false;
       function clampBalloonYen(y) { const p = loanPrincipal(); return Math.max(0, Math.min(y, p * 0.9)); }
@@ -1012,14 +1001,20 @@
         return `データ種別,返済予定表\n${lines.join('\n')}\n\nサマリー\n${meta}`;
       }
 
-      function download(name, text) { const blob = new Blob([text], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000); }
+      function download(name, text) {
+        // BOM付きで文字化け防止（Excel想定）
+        const blob = new Blob(["\uFEFF" + text], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }
 
-      // Tabs
+      // タブ
       const tab1 = document.getElementById('tab1'); const tab2 = document.getElementById('tab2');
       tab1.addEventListener('click', () => { tab1.classList.add('active'); tab2.classList.remove('active'); panel1.style.display = 'block'; panel2.style.display = 'none'; });
       tab2.addEventListener('click', () => { tab2.classList.add('active'); tab1.classList.remove('active'); panel2.style.display = 'block'; panel1.style.display = 'none'; drawChart([]); });
 
-      // PDF（画面と別レイアウトでA4/縦）
+      // PDF（プリンタダイアログ）
       function printableHTML(res) {
         const rows = res.rows.map(r => {
           const bonusCell = r.bonus ? '¥' + yen(r.bonus) : '—';
@@ -1042,7 +1037,6 @@
       @page{ size:A4; margin:18mm; }
       body{ font:12px/1.6 -apple-system, system-ui, Meiryo, sans-serif; color:#000 }
       h1{ font-size:18px; margin:0 0 8px }
-      .meta{ margin:6px 0 14px; font-size:12px }
       table{ width:100%; border-collapse:collapse; font-size:11px }
       th,td{ border-bottom:1px solid #ccc; padding:6px 6px; text-align:left }
       th:nth-child(n+3), td:nth-child(n+3){ text-align:right }
@@ -1062,7 +1056,6 @@
     <footer>作成日時: ${new Date().toLocaleString('ja-JP')}</footer>
     <script>setTimeout(()=>window.print(), 50);<\/script>
     </body></html>`;
-
         const trimmed = html.trim();
         return /<\/html>\s*$/i.test(trimmed) ? trimmed : (trimmed + '\n</body></html>');
       }
@@ -1072,9 +1065,7 @@
         const html = printableHTML(res);
         const w = window.open('', '_blank');
         try {
-          w.document.open();
-          w.document.write(html);
-          w.document.close();
+          w.document.open(); w.document.write(html); w.document.close();
         } catch (err) {
           console.error('PDFウィンドウ描画エラー', err);
           alert('PDF描画に失敗しました。ポップアップブロックを解除して再実行してください。');
@@ -1084,8 +1075,10 @@
       // Run/Reset/Export/PDF
       document.getElementById('run').addEventListener('click', () => { const res = buildSchedule(getInputs()); render(res); if (!document.getElementById('detail').open) { document.getElementById('detail').open = true; } });
       document.getElementById('reset').addEventListener('click', () => {
-        priceEl.value = 3000000; feesEl.value = 200000; downEl.value = 300000; tradeinEl.value = 0; rateEl.value = 3.9; monthsEl.value = 60; { const now = new Date(); startMonthEl.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; };
-        bonusAmountEl.value = 0; document.getElementById('bonusType').value = 'addon'; bonusJanEl.checked = true; bonusFebEl.checked = false; bonusJulEl.checked = false; bonusAugEl.checked = true; bonusSepEl.checked = false; bonusDecEl.checked = false;
+        priceEl.value = 3000000; feesEl.value = 200000; downEl.value = 300000; tradeinEl.value = 0; rateEl.value = 3.9; monthsEl.value = 60;
+        { const now = new Date(); startMonthEl.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; }
+        bonusAmountEl.value = 0; document.getElementById('bonusType').value = 'addon';
+        bonusJanEl.checked = true; bonusFebEl.checked = false; bonusJulEl.checked = false; bonusAugEl.checked = true; bonusSepEl.checked = false; bonusDecEl.checked = false;
         balloonYenEl.value = 0; balloonPctEl.value = 0; roundingEl.value = 'nearest'; balloonLast = 'yen';
         document.querySelector('input[name="mode"][value="annuity"]').checked = true;
         document.querySelector('#tbl tbody').innerHTML = '';
@@ -1166,13 +1159,24 @@
       }));
     })();
   </script>
+
+  <!-- 年率±ボタンのハンドラ（グローバル） -->
+  <script>
+    window.stepRate = function stepRate(delta) {
+      const el = document.getElementById("rate");
+      let val = parseFloat(el.value || 0);
+      val = Math.min(30, Math.max(0, val + delta)); // 0〜30%
+      el.value = val.toFixed(2);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+  </script>
+
+  <!-- 前回入力アシスト（localStorage） -->
   <script>
     (function () {
       const STORE_KEY = "autoLoanPRO:last-v2";
-      const TARGETS = ["price", "fees", "down", "tradein", "rate",
-        "months", "bonusAmount", "balloonYen", "balloonPct"];
+      const TARGETS = ["price", "fees", "down", "tradein", "rate", "months", "bonusAmount", "balloonYen", "balloonPct"];
 
-      // 保存
       function saveState() {
         const s = {};
         TARGETS.forEach(id => {
@@ -1182,7 +1186,6 @@
         localStorage.setItem(STORE_KEY, JSON.stringify(s));
       }
 
-      // アシスト表示
       function showAssist() {
         let s = {}; try { s = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch (_) { }
         TARGETS.forEach(id => {
@@ -1200,18 +1203,17 @@
         });
       }
 
-      // 入力時に保存
+      // 入力時に保存＆更新
       TARGETS.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener("change", () => { saveState(); showAssist(); });
+        el.addEventListener("input", () => { /* 連続入力でもそこそこ追従 */ });
       });
 
-      // 初期表示
       window.addEventListener("load", showAssist);
     })();
   </script>
-
 </body>
 
 </html>
