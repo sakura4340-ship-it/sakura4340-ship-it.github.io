@@ -39,13 +39,6 @@
     background:#0a1124; border:1px solid #1b2743; color:#e6ecf3; border-radius:12px; padding:14px 14px; outline:none; width:100%; max-width:100%; min-width:0;
     font-size: 20px; /* 視認性向上＆iOSズーム防止 */
   }
-  /* stepper for rate */
-  .spin{ display:flex; align-items:stretch; gap:8px; width:100%; }
-  .spin input{ flex:1; }
-  .spin .step{ appearance:none; border:1px solid #1b2743; background:#0a1124; color:#e6ecf3; border-radius:10px; padding:0 8px; min-width:44px; font-size:18px; font-weight:800; line-height:1; display:grid; place-items:center; cursor:pointer }
-  .spin .step:active{ transform: translateY(1px); }
-  @media (max-width:700px){ .spin .step{ min-height:56px; min-width:56px; font-size:22px } }
-  .field input[type="number"]{ text-align:right; font-variant-numeric: tabular-nums; letter-spacing:.3px; font-size:22px }
   .hint{ font-size: clamp(12px, .5vw + 10px, 13px); color:#7b879a }
   .muted{ color: var(--muted) }
   .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:12px }
@@ -84,28 +77,27 @@
     th,td{ padding:12px 10px }
     canvas{ height:380px }
     .field input, .field select{ font-size: clamp(22px, 6vw, 30px); padding:16px 16px; min-height:56px }
-    .field input[type="number"]{ font-size: clamp(26px, 8vw, 36px) }
     .field label{ font-size: clamp(14px, 3.6vw, 18px) }
     button{ min-height:54px; font-size:17px }
   }
-  /* ==== bonus/residual layout tweak ==== */
+
+  /* ==== layout tweaks: start month wider / months & rate narrower ==== */
   @media (min-width: 701px){
-    /* 3列の合計幅が左カラム(≈500px)を超えないように固定上限を設定 */
-    .row3{ grid-template-columns: minmax(110px, .9fr) minmax(110px, .9fr) minmax(220px, 1.2fr); }
+    .row3{ grid-template-columns: minmax(110px,.9fr) minmax(110px,.9fr) minmax(220px,1.2fr); }
     #months{ max-width: 120px; }
-    .spin{ max-width: 220px; }
-    #rate{ width:100%; }
+    #rateWrap{ max-width: 240px; }
     #startMonth{ min-width: 220px; width: 100%; }
   }
-  /* stepper for rate (vertical right) */
+
+  /* vertical stepper for rate */
   .spinV{ position:relative; display:flex; align-items:stretch; width:100%; }
-  .spinV input{ flex:1; padding-right:64px; }
+  .spinV input{ flex:1; padding-right:64px; text-align:right; font-variant-numeric:tabular-nums; letter-spacing:.3px }
   .spinV .vstep{ position:absolute; top:50%; right:8px; transform:translateY(-50%); display:flex; flex-direction:column; gap:6px; }
   .spinV .step{ appearance:none; border:1px solid #1b2743; background:#0a1124; color:#e6ecf3; border-radius:8px; width:44px; height:26px; font-size:14px; font-weight:800; line-height:1; display:grid; place-items:center; cursor:pointer }
   .spinV .step:active{ transform: translateY(1px); }
   @media (max-width:700px){ .spinV .step{ width:56px; height:32px; font-size:18px } }
-  @media (min-width:701px){ .spinV{ max-width:240px; } }
-  /* === override: bonus narrower, residual wider === */
+
+  /* bonus narrower / residual wider */
   @media (min-width:701px){
     .row-bonus-resid{ grid-template-columns: .68fr 1.32fr; }
     #bonusAmount{ max-width: 200px; }
@@ -131,27 +123,27 @@
       <div class="row">
         <div class="field">
           <label>車両本体価格 <span class="muted">（税込想定）</span></label>
-          <input type="number" id="price" value="3000000" min="0" step="1000" autofocus>
+          <input type="text" data-num="money" id="price" value="3000000" inputmode="numeric" autocomplete="off" autofocus>
         </div>
         <div class="field">
           <label>オプション・諸費用</label>
-          <input type="number" id="fees" value="200000" min="0" step="1000">
+          <input type="text" data-num="money" id="fees" value="200000" inputmode="numeric" autocomplete="off">
         </div>
       </div>
 
       <div class="row">
         <div class="field">
           <label>頭金</label>
-          <input type="number" id="down" value="300000" min="0" step="1000">
+          <input type="text" data-num="money" id="down" value="300000" inputmode="numeric" autocomplete="off">
         </div>
         <div class="field">
           <label>下取り（差引後）</label>
-          <input type="number" id="tradein" value="0" min="0" step="1000">
+          <input type="text" data-num="money" id="tradein" value="0" inputmode="numeric" autocomplete="off">
         </div>
       </div>
 
       <div class="row3">
-        <div class="field">
+        <div class="field" id="rateWrap">
           <label>実質年率（%）</label>
           <div class="spinV">
             <input type="text" id="rate" value="3.9" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off">
@@ -160,7 +152,6 @@
               <button type="button" class="step down" id="rateDec" aria-label="年率を0.1下げる">▼</button>
             </div>
           </div>
-        </div>
         </div>
         <div class="field">
           <label>返済回数（月）</label>
@@ -175,7 +166,7 @@
       <div class="row row-bonus-resid">
         <div class="field" id="bonusField">
           <label>ボーナス額</label>
-          <input type="number" id="bonusAmount" value="0" min="0" step="1000">
+          <input type="text" data-num="money" id="bonusAmount" value="0" inputmode="numeric" autocomplete="off">
           <div style="margin-top:6px">
             <select id="bonusType">
               <option value="addon" selected>加算（通常月に上乗せ）</option>
@@ -195,8 +186,8 @@
         <div class="field">
           <label>残価設定</label>
           <div class="grid2">
-            <input type="number" id="balloonYen" value="0" min="0" step="100" placeholder="残価（円）">
-            <input type="number" id="balloonPct" value="0" min="0" step="0.1" placeholder="残価（％）">
+            <input type="text" data-num="money" id="balloonYen" value="0" inputmode="numeric" autocomplete="off" placeholder="残価（円）">
+            <input type="text" id="balloonPct" value="0" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off" placeholder="残価（％）">
           </div>
           <div class="hint" id="balloonHint">
             残価率の基準：<strong>車両本体価格（税込）</strong>に対して%を掛けます。上限は借入元金の90%。（残価は<strong>百円単位</strong>で丸め）
@@ -285,25 +276,63 @@
   const nextMonth = d => new Date(d.getFullYear(), d.getMonth()+1, 1);
   const roundUnit = (n, u=100) => Math.round((+n||0)/u)*u; // 既定: 百円単位
 
-  // focus-friendly numeric inputs（クリックで全選択）
-  function enhanceNumericInputs(){
-    const nums = Array.from(document.querySelectorAll('#inputs input[type="number"]'));
-    nums.forEach((el)=>{
-      el.setAttribute('inputmode','decimal');
-      el.setAttribute('autocomplete','off');
-      el.addEventListener('focus', e=>{ e.target.select(); });
-      el.addEventListener('mousedown', e=>{ if(document.activeElement!==e.target){ e.preventDefault(); e.target.focus(); e.target.select(); } });
-      el.addEventListener('wheel', e=>{ e.preventDefault(); }, {passive:false});
-      el.addEventListener('keydown', e=>{
-        if(e.key==='Enter'){
-          const focusables = Array.from(document.querySelectorAll('#inputs input, #inputs select, #inputs button'));
-          const i = focusables.indexOf(e.target);
-          const next = focusables[i+1] || focusables[0];
-          next.focus(); if(next.select) next.select();
-          e.preventDefault();
-        }
-      });
+  // ===== 入力補助 =====
+  function enforceDotDecimalOnly(input){
+    let composing = false;
+    const toHalf = (s)=> s
+      .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xFF10+48))
+      .replace(/[．｡。･・·•]/g, '.')
+      .replace(/[，、､,]/g, '.');
+    const sanitize = ()=>{
+      let v = toHalf(input.value || '');
+      v = v.replace(/[^0-9.]/g, '');
+      const i = v.indexOf('.');
+      if(i !== -1){ v = v.slice(0, i+1) + v.slice(i+1).replace(/\./g, ''); }
+      input.value = v;
+    };
+    input.addEventListener('compositionstart', ()=> composing=true);
+    input.addEventListener('compositionend', ()=>{ composing=false; sanitize(); });
+    input.addEventListener('beforeinput', (e)=>{
+      if(composing||e.isComposing) return;
+      if(e.inputType==='insertText' && e.data){
+        const d = e.data.replace(/[．｡。･・·•]/g,'.');
+        if(!/^[0-9.]$/.test(d)) { e.preventDefault(); return; }
+        if(d==='.' && input.value.includes('.')) { e.preventDefault(); return; }
+      }
     });
+    input.addEventListener('keydown', (e)=>{
+      if(composing||e.isComposing) return;
+      if(e.ctrlKey||e.metaKey||e.altKey) return;
+      const ok = new Set(['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End','Enter']);
+      if(ok.has(e.key)) return;
+      if(/^[0-9.]$/.test(e.key)){
+        if(e.key==='.' && input.value.includes('.')) e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+    });
+    input.addEventListener('paste', ()=> setTimeout(sanitize,0));
+    input.addEventListener('input', ()=>{ if(!composing) sanitize(); });
+    input.addEventListener('change', sanitize);
+    sanitize();
+  }
+
+  function enforceNumericMoney(input){
+    let composing=false;
+    const toHalf=(s)=> s
+      .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xFF10+48))
+      .replace(/[，、､,\s]/g, '');
+    const sanitize=()=>{
+      let v = toHalf(input.value||'');
+      v = v.replace(/[^0-9]/g,'');
+      input.value = v;
+    };
+    input.addEventListener('compositionstart', ()=> composing=true);
+    input.addEventListener('compositionend', ()=>{ composing=false; sanitize(); });
+    input.addEventListener('input', ()=>{ if(!composing) sanitize(); });
+    input.addEventListener('paste', ()=> setTimeout(sanitize,0));
+    input.addEventListener('change', sanitize);
+    sanitize();
   }
 
   // 支払額は百円単位に丸める（例：61,800円など）
@@ -314,65 +343,12 @@
     return Math.round(val/u)*u; // nearest（既定）
   }
 
-  // 実質年率は小数点「.」のみ許可（全角→半角変換・複数ドット禁止・e/+/−/カンマ禁止）
-  function enforceDotDecimalOnly(input){
-    let composing = false;
-    const toHalfWidth = (s)=> s
-      .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xFF10+48))
-      .replace(/[．｡。･・·•]/g, '.')
-      .replace(/[，、､,]/g, '.') // カンマ系は小数点に変換
-    const sanitize = ()=>{
-      let v = toHalfWidth(input.value || '');
-      v = v.replace(/[^0-9.]/g, '');
-      const i = v.indexOf('.');
-      if(i !== -1){ v = v.slice(0, i+1) + v.slice(i+1).replace(/\./g, ''); }
-      input.value = v;
-    };
-    input.addEventListener('compositionstart', ()=> { composing = true; });
-    input.addEventListener('compositionend', ()=> { composing = false; sanitize(); });
-    input.addEventListener('beforeinput', (e)=>{
-      if(composing || e.isComposing) return; // IME中はブロックしない
-      if(e.inputType === 'insertText' && e.data){
-        const d = toHalfWidth(e.data);
-        if(!/^[0-9.]$/.test(d)) { e.preventDefault(); return; }
-        if(d === '.' && input.value.includes('.')) { e.preventDefault(); return; }
-      }
-    });
-    input.addEventListener('keydown', (e)=>{
-      if(composing || e.isComposing) return; // IME変換中は通す
-      if(e.ctrlKey||e.metaKey||e.altKey) return;
-      const ok = new Set(['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End','Enter']);
-      if(ok.has(e.key)) return;
-      if(/^[0-9.]$/.test(e.key)){
-        if(e.key === '.' && input.value.includes('.')) e.preventDefault();
-        return;
-      }
-      if(['e','E','+','-',' ', ',', '、', '，'].includes(e.key)) { e.preventDefault(); return; }
-      // その他は入力後にsanitizeで除去
-    });
-    input.addEventListener('paste', ()=> setTimeout(sanitize, 0));
-    input.addEventListener('input', ()=> { if(!composing) sanitize(); });
-    input.addEventListener('change', sanitize);
-    sanitize();
-  }
-
   // Elements
   const priceEl = document.getElementById('price');
   const feesEl = document.getElementById('fees');
   const downEl = document.getElementById('down');
   const tradeinEl = document.getElementById('tradein');
   const rateEl = document.getElementById('rate');
-  // 実質年率は小数点「.」のみ許可
-  enforceDotDecimalOnly(rateEl);
-  // ±ステッパー
-  const rateDecBtn = document.getElementById('rateDec');
-  const rateIncBtn = document.getElementById('rateInc');
-  const minRate = 0, maxRate = 99.99, stepRate = 0.1;
-  const parseRate = ()=>{ const v = (rateEl.value||'').replace(/[^0-9.]/g,''); return parseFloat(v)||0; };
-  const setRate = (v)=>{ v = Math.min(maxRate, Math.max(minRate, Math.round(v*100)/100)); rateEl.value = String(v); rateEl.dispatchEvent(new Event('input', {bubbles:true})); };
-  const setRateBy = (d)=> setRate(parseRate() + d);
-  rateDecBtn.addEventListener('click', ()=> setRateBy(-stepRate));
-  rateIncBtn.addEventListener('click', ()=> setRateBy(+stepRate));
   const monthsEl = document.getElementById('months');
   const startMonthEl = document.getElementById('startMonth');
   const bonusAmountEl = document.getElementById('bonusAmount');
@@ -386,22 +362,38 @@
   const balloonPctEl = document.getElementById('balloonPct');
   const roundingEl = document.getElementById('rounding');
 
-  // --- Bonus month selection: max 2 (6か月対応) ---
+  // 実質年率：数字と.のみ
+  enforceDotDecimalOnly(rateEl);
+  // 円入力：日本語の「、」「，」等は許容→内部で除去
+  [priceEl,feesEl,downEl,tradeinEl,bonusAmountEl,balloonYenEl].forEach(el=> enforceNumericMoney(el));
+
+  // レートの上下ボタン
+  const rateDecBtn = document.getElementById('rateDec');
+  const rateIncBtn = document.getElementById('rateInc');
+  const minRate = 0, maxRate = 99.99, stepRate = 0.1;
+  const parseRate = ()=>{ const v = (rateEl.value||'').replace(/[^0-9.]/g,''); return parseFloat(v)||0; };
+  const setRate = (v)=>{ v = Math.min(maxRate, Math.max(minRate, Math.round(v*100)/100)); rateEl.value = String(v); rateEl.dispatchEvent(new Event('input', {bubbles:true})); };
+  rateDecBtn.addEventListener('click', ()=> setRate(parseRate() - stepRate));
+  rateIncBtn.addEventListener('click', ()=> setRate(parseRate() + stepRate));
+
+  // Bonus month selection: max 2
   function setupBonusLimit(){
     const boxes = Array.from(document.querySelectorAll('#bonusField input[type="checkbox"]'));
     const apply = ()=>{
       const checked = boxes.filter(b=>b.checked);
       const over = checked.length >= 2;
       boxes.forEach(b=>{
-        if(!b.checked){ b.disabled = over; if(b.parentElement) b.parentElement.classList.toggle('disabled', over); }
-        else { b.disabled = false; if(b.parentElement) b.parentElement.classList.remove('disabled'); }
+        if(!b.checked){ b.disabled = over; b.parentElement?.classList.toggle('disabled', over); }
+        else { b.disabled = false; b.parentElement?.classList.remove('disabled'); }
       });
     };
     boxes.forEach(b=> b.addEventListener('change', apply));
     apply();
     return apply;
   }
+  window.applyBonusLimit = setupBonusLimit();
 
+  // KPIs
   const k_principal = document.getElementById('k_principal');
   const k_monthly = document.getElementById('k_monthly');
   const k_total = document.getElementById('k_total');
@@ -412,7 +404,7 @@
   const panel1 = document.getElementById('panel1');
   const panel2 = document.getElementById('panel2');
 
-  // --- Bases ---
+  // === Business rules ===
   function loanPrincipal(){
     const price = +priceEl.value||0; const fees = +feesEl.value||0; const down = +downEl.value||0; const tradein = +tradeinEl.value||0;
     return Math.max(0, price + fees - down - tradein);
@@ -421,7 +413,7 @@
     return +priceEl.value || 0;
   }
 
-  // --- Residual value bi-directional sync ---
+  // Residual bi-directional
   let balloonLast = 'yen'; // or 'pct'
   let syncing = false;
   function clampBalloonYen(y){ const p = loanPrincipal(); return Math.max(0, Math.min(y, p*0.9)); }
@@ -443,7 +435,6 @@
     balloonPctEl.value = effPct.toFixed(1);
     syncFromPct();
   }
-
   function syncFromYen(){
     if(syncing) return; syncing = true;
     const base = vehicleBasePrice();
@@ -460,7 +451,6 @@
     balloonYenEl.value = String(effY|0);
     syncFromYen();
   }
-
   balloonPctEl.addEventListener('input', syncFromPct);
   balloonPctEl.addEventListener('change', commitPct);
   balloonPctEl.addEventListener('blur', commitPct);
@@ -512,7 +502,7 @@
           const isB = bonusSet.has(d.getMonth());
           let pay = isB ? (isTotal ? inp.bonusAmount : base + inp.bonusAmount) : base;
           pay = roundPay100(pay, inp.rounding);
-          const interest = bal * r; const prin = Math.max(0, pay - interest); bal -= prin; d = nextMonth(d);
+          const interest = Math.round(bal * r); const prin = Math.max(0, pay - interest); bal = Math.max(0, bal - prin); d = nextMonth(d);
         }
         return bal <= balloon + 1e-6;
       };
@@ -525,7 +515,7 @@
       const startMonth = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
       const isFirstBonus = bonusSet.has(startMonth.getMonth());
       const stdFirst = roundPay100(isFirstBonus ? (isTotal ? inp.bonusAmount : baseMonthly + inp.bonusAmount) : baseMonthly, inp.rounding);
-      const fbalFirst = (firstPay)=>{ let bal=principal; let d=new Date(startMonth); for(let i=0;i<monthsAmort;i++){ const isB=bonusSet.has(d.getMonth()); let pay = (i===0) ? firstPay : (isB ? (isTotal ? inp.bonusAmount : baseMonthly + inp.bonusAmount) : baseMonthly); if(i>0) pay = roundPay100(pay, inp.rounding); const interest = bal*r; const prin = Math.max(0, pay - interest); bal = Math.max(0, bal - prin); d=nextMonth(d);} return bal; };
+      const fbalFirst = (firstPay)=>{ let bal=principal; let d=new Date(startMonth); for(let i=0;i<monthsAmort;i++){ const isB=bonusSet.has(d.getMonth()); let pay = (i===0) ? firstPay : (isB ? (isTotal ? inp.bonusAmount : baseMonthly + inp.bonusAmount) : baseMonthly); if(i>0) pay = roundPay100(pay, inp.rounding); const interest = Math.round(bal * r); const prin = Math.max(0, pay - interest); bal = Math.max(0, bal - prin); d=nextMonth(d);} return bal; };
       let l=-200000, h=200000; const sgn=x=>(x>0)-(x<0);
       let fL=fbalFirst(stdFirst + l)-balloon, fH=fbalFirst(stdFirst + h)-balloon; let ex=0; while(sgn(fL)*sgn(fH)>0 && ex<6){ l*=2; h*=2; fL=fbalFirst(stdFirst + l)-balloon; fH=fbalFirst(stdFirst + h)-balloon; ex++; }
       for(let t=0;t<20;t++){ const m=Math.floor((l+h)/2); const fM=fbalFirst(stdFirst + m)-balloon; if(fM===0){ l=h=m; break;} if(sgn(fL)*sgn(fM)<=0){ h=m; fH=fM; } else { l=m; fL=fM; } }
@@ -536,7 +526,7 @@
         const isB=bonusSet.has(d.getMonth()); const bonusDisp = isB && !isTotal ? inp.bonusAmount : 0;
         let pay = (i===0) ? firstAdjPay : (isB ? (isTotal ? inp.bonusAmount : baseMonthly + inp.bonusAmount) : baseMonthly);
         pay = (i===0) ? Math.round(pay) : roundPay100(pay, inp.rounding);
-        const interest = bal * r; let prin = Math.max(0, pay - interest);
+        const interest = Math.round(bal * r); let prin = Math.max(0, pay - interest);
         bal = Math.max(0, bal - prin);
         totalPay += pay; totalInt += Math.max(0, interest); totalBonus += bonusDisp;
         rows.push({ idx:i+1, date:new Date(d), pay, bonus: bonusDisp, balloon:0, interest, principal: prin, balance: bal }); d=nextMonth(d);
@@ -553,9 +543,9 @@
       const monthlyPrincipal = Math.max(0,(principal - balloon)/monthsAmort);
       // 第1回のみ1円単位で調整（以降は百円単位）
       const isFirstB = bonusSet.has(start.getMonth());
-      const firstInterest = principal * r;
+      const firstInterest = Math.round(principal * r);
       const stdFirstTarget = isFirstB && isTotal ? inp.bonusAmount : (monthlyPrincipal + firstInterest + (isFirstB && !isTotal ? inp.bonusAmount : 0));
-      const fbalEP = (firstPay)=>{ let bal=principal; let d=new Date(start); for(let i=0;i<monthsAmort;i++){ const isB=bonusSet.has(d.getMonth()); const interest = bal*r; const prinPlan = (i===monthsAmort-1 ? Math.max(0, bal) : monthlyPrincipal); let pay; if(i===0) pay = firstPay; else { pay = isB && isTotal ? inp.bonusAmount : (prinPlan + interest + (isB && !isTotal ? inp.bonusAmount : 0)); pay = roundPay100(pay, inp.rounding);} const prin = Math.max(0, pay - interest); bal = Math.max(0, bal - prin); d=nextMonth(d);} return bal; };
+      const fbalEP = (firstPay)=>{ let bal=principal; let d=new Date(start); for(let i=0;i<monthsAmort;i++){ const isB=bonusSet.has(d.getMonth()); const interest = Math.round(bal * r); const prinPlan = (i===monthsAmort-1 ? Math.max(0, bal) : monthlyPrincipal); let pay; if(i===0) pay = firstPay; else { pay = isB && isTotal ? inp.bonusAmount : (prinPlan + interest + (isB && !isTotal ? inp.bonusAmount : 0)); pay = roundPay100(pay, inp.rounding);} const prin = Math.max(0, pay - interest); bal = Math.max(0, bal - prin); d=nextMonth(d);} return bal; };
       let l=-200000, h=200000; const sgn=x=>(x>0)-(x<0);
       let fL=fbalEP(stdFirstTarget + l)-balloon, fH=fbalEP(stdFirstTarget + h)-balloon; let ex=0; while(sgn(fL)*sgn(fH)>0 && ex<6){ l*=2; h*=2; fL=fbalEP(stdFirstTarget + l)-balloon; fH=fbalEP(stdFirstTarget + h)-balloon; ex++; }
       for(let t=0;t<20;t++){ const m=Math.floor((l+h)/2); const fM=fbalEP(stdFirstTarget + m)-balloon; if(fM===0){ l=h=m; break;} if(sgn(fL)*sgn(fM)<=0){ h=m; } else { l=m; } }
@@ -563,7 +553,7 @@
 
       const rows=[]; let bal=principal, totalPay=0, totalInt=0, totalBonus=0; let d=new Date(start); let firstBaseMonthly=0;
       for(let i=0;i<monthsAmort;i++){
-        const isB=bonusSet.has(d.getMonth()); const interest = bal*r; let bonusDisp = isB && !isTotal ? inp.bonusAmount : 0; let prinPlan = (i===monthsAmort-1 ? Math.max(0, bal) : monthlyPrincipal);
+        const isB=bonusSet.has(d.getMonth()); const interest = Math.round(bal * r); const bonusDisp = isB && !isTotal ? inp.bonusAmount : 0; const prinPlan = (i===monthsAmort-1 ? Math.max(0, bal) : monthlyPrincipal);
         let targetPay = isB && isTotal ? inp.bonusAmount : (prinPlan + interest + (isB && !isTotal ? inp.bonusAmount : 0));
         let pay = (i===0) ? Math.round(firstAdj) : roundPay100(targetPay, inp.rounding);
         const prin = Math.max(0, pay - interest);
@@ -590,7 +580,7 @@
     ctx.clearRect(0,0,cssW,cssH);
     const W = cssW, H = cssH;
     const padL=56, padR=16, padT=12, padB=30; const w = W - padL - padR, h = H - padT - padB; const n = values.length;
-    const maxV = Math.max(...values), minV = Math.min(...values); const y = v => padT + h - (h*(v - minV)/(maxV - minV || 1)); const x = i => padL + (w*(i)/(Math.max(1,n-1)));
+    const maxV = Math.max(...values,0), minV = Math.min(...values,0); const y = v => padT + h - (h*(v - minV)/(maxV - minV || 1)); const x = i => padL + (w*(i)/(Math.max(1,n-1)));
     ctx.strokeStyle = '#1b2743'; ctx.lineWidth = 1; ctx.beginPath(); for(let k=0;k<=4;k++){ const gy = padT + h*k/4; ctx.moveTo(padL, gy); ctx.lineTo(W-padR, gy); } ctx.stroke();
     ctx.fillStyle = '#9fb3d1'; ctx.font = '13px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; for(let k=0;k<=4;k++){ const gy = padT + h*k/4; const val = Math.round(maxV - (maxV-minV)*k/4); ctx.fillText('¥'+val.toLocaleString('ja-JP'), padL-8, gy); }
     ctx.textAlign = 'center'; ctx.textBaseline = 'top'; const step = Math.max(1, Math.floor(n/8)); for(let i=0;i<n;i+=step){ ctx.fillText(String(i+1), x(i), H-padB+6); }
@@ -674,7 +664,6 @@
     <script>setTimeout(()=>window.print(), 50);<\/script>
     </body></html>`;
 
-    // 閉じタグ保証
     const trimmed = html.trim();
     return /<\/html>\s*$/i.test(trimmed) ? trimmed : (trimmed + '\n</body></html>');
   }
@@ -759,14 +748,23 @@
     if(!ok) console.warn('SelfTests', {results:tests});
   }
 
-  // 初期化
-  enhanceNumericInputs();
-  window.applyBonusLimit = setupBonusLimit();
-  // 開始月はアプリを開いた日で初期化
-  (function(){ const now=new Date(); startMonthEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; })();
-  // 初回表示
-  document.getElementById('run').click();
-  runSelfTests();
+  // 初期化（開始月=今日の月）
+  (function init(){
+    const now = new Date();
+    startMonthEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    runSelfTests();
+  })();
+
+  function draw(values){ drawChart(values); }
+
+  // 画面切替
+  const tabEls = [tab1, tab2];
+  tabEls.forEach((t,i)=> t.addEventListener('click', ()=>{
+    tabEls.forEach((x,j)=> x.classList.toggle('active', j===i));
+    panel1.style.display = i===0 ? 'block':'none';
+    panel2.style.display = i===1 ? 'block':'none';
+    if(i===1){ const res = buildSchedule(getInputs()); draw(res.rows.map(r=>r.balance)); }
+  }));
 })();
 </script>
 </body>
