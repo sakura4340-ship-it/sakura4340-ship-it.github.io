@@ -8,6 +8,13 @@
     <meta name="theme-color" content="#0f172a" />
     <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%230ea5e9' d='M8 36a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4z'/%3E%3Ccircle cx='20' cy='50' r='6' fill='%23e2e8f0'/%3E%3Ccircle cx='44' cy='50' r='6' fill='%23e2e8f0'/%3E%3Cpath fill='%231f2937' d='M9 34c2-7 8-12 15-12h16c7 0 13 5 15 12z'/%3E%3C/svg%3E" />
+    <link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png">
+<meta name="theme-color" content="#0f172a">
+
+    
     <style>
         :root {
             --bg: #0b1020;
@@ -580,6 +587,7 @@
         }
     </style>
 </head>
+<button id="btnInstall" hidden>インストール</button>
 
 <body>
     <header>
@@ -1209,6 +1217,37 @@
             window.addEventListener("load", showAssist);
         })();
     </script>
+
+    <script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(console.error);
+    });
+  }
+
+  let deferredPrompt = null;
+  const btn = document.getElementById("btnInstall");
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (btn) btn.hidden = false;
+  });
+  if (btn) btn.addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    btn.hidden = true;
+  });
+
+  // iOSは共有→ホーム画面に追加
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isIOS && !isStandalone) {
+    // 必要ならガイドUIをここで表示
+  }
+</script>
+
 </body>
 
 </html>
