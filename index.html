@@ -1247,6 +1247,61 @@
     // 必要ならガイドUIをここで表示
   }
 </script>
+<script>
+  // --- Service Worker 登録 ---
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+      try {
+        const reg = await navigator.serviceWorker.register("/sw.js");
+        // 初回はSWがコントロール外 → 次回ロードでbeforeinstallpromptが来ることがある
+        console.log("SW:", reg);
+      } catch (e) { console.error("SW register error:", e); }
+    });
+  }
+
+  // --- インストール誘導（Chrome/Edge専用） ---
+  let deferredPrompt = null;
+  const installBtn = document.getElementById("btnInstall") || (() => {
+    // ボタンが無ければ暫定で作る
+    const b = document.createElement("button");
+    b.id = "btnInstall";
+    b.textContent = "インストール";
+    b.hidden = true;
+    b.style.cssText = "position:fixed;right:12px;bottom:12px;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;z-index:99999;cursor:pointer";
+    document.body.appendChild(b);
+    return b;
+  })();
+
+  // 1回でも「後で」にすると当面抑制される → ユーザー操作でのみ再表示
+  window.addEventListener("beforeinstallprompt", (e) => {
+    console.log("beforeinstallprompt fired");
+    e.preventDefault();                 // 既定のバナーを止める
+    deferredPrompt = e;                 // 後でprompt()するため保持
+    installBtn.hidden = false;          // ボタンを表示
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();            // バナー表示（※ユーザー操作必須）
+    const choice = await deferredPrompt.userChoice;
+    console.log("PWA install choice:", choice.outcome);
+    deferredPrompt = null;
+    installBtn.hidden = true;           // 成否に関わらず一旦隠す（連打防止）
+  });
+
+  // --- iOSはボタンが出ない仕様 → ガイド表示（任意） ---
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isIOS && !isStandalone) {
+    // ここで「共有 → ホーム画面に追加」ガイドを出すなら出す
+    console.log("iOS: ホーム画面に追加を使用");
+  }
+
+  // --- 既にインストール済みならボタン隠す ---
+  window.matchMedia('(display-mode: standalone)').addEventListener('change', e => {
+    if (e.matches) installBtn.hidden = true;
+  });
+</script>
 
 </body>
 
