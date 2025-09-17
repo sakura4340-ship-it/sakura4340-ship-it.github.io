@@ -14,14 +14,11 @@ const APP_SHELL = [
   "/icons/apple-touch-icon-180.png"
 ];
 
-// ====== install：シェルを事前キャッシュ、即時適用準備 ======
+// sw.js
 self.addEventListener('install', (e) => self.skipWaiting());
-
-// ====== activate：旧キャッシュ掃除＆既存タブも新SW管理へ ======
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', () => {});
 
-// ====== fetch：HTMLはネット優先、静的はキャッシュ優先 ======
-self.addEventListener('fetch', () => {}); // まずは素通し
 
   if (isHTML) {
     // オフライン時のフォールバックも考慮
