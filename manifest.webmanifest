@@ -1,16 +1,20 @@
 {
   "name": "自動車ローン シミュレーターPRO",
-  "short_name": "ローンPRO",
-  "description": "オフラインでも使える自動車ローン計算アプリ",
-  "lang": "ja",
-  "start_url": "/?source=pwa",
-  "scope": "/",
+  "short_name": "ローンSim",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "icons": [
-    { "src": "/icons/icon-192.png",  "sizes": "192x192",  "type": "image/png" },
-    { "src": "/icons/icon-512.png",  "sizes": "512x512",  "type": "image/png" },
-    { "src": "/icons/icon-1024.png", "sizes": "1024x1024","type": "image/png", "purpose": "maskable any" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }
