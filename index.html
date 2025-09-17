@@ -1246,14 +1246,12 @@
     </script>
 <script>
   // --- Service Worker 登録（ルート配信なので絶対パス） ---
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", async () => {
-      try {
-        const reg = await navigator.serviceWorker.register("/sw.js");
-        console.log("[SW] registered:", reg.scope);
-      } catch (e) { console.error("[SW] register error:", e); }
-    });
-  }
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").then(reg => {
+    console.log("SW registered:", reg);
+  }).catch(err => console.error("SW error:", err));
+}
+
 
   // --- インストール誘導（Chrome/Edge） ---
   let deferredPrompt = null;
