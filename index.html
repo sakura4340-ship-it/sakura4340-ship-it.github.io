@@ -645,7 +645,7 @@ if(isIOS&&!isStandalone){console.log("iOS: 共有→ホーム画面に追加");}
 <!-- ==== 最小パッチ：年率± と 残価％↔円 ==== -->
 <script>
 (()=> {
-  // 年率 ±
+  // 年率 ±（そのまま）
   const rate = document.getElementById('rate');
   const inc  = document.getElementById('rateInc');
   const dec  = document.getElementById('rateDec');
@@ -660,37 +660,58 @@ if(isIOS&&!isStandalone){console.log("iOS: 共有→ホーム画面に追加");}
   inc?.addEventListener('click', ()=> set(parse()+step));
   dec?.addEventListener('click', ()=> set(parse()-step));
 
-  // 残価 ％↔円（基準：車両本体 price）
+  // 残価 ％↔円
   const price = document.getElementById('price');
   const fees  = document.getElementById('fees');
   const down  = document.getElementById('down');
   const trade = document.getElementById('tradein');
   const pctEl = document.getElementById('balloonPct');
   const yenEl = document.getElementById('balloonYen');
+  const hint  = document.getElementById('balloonHint');
 
-  const basePrice = ()=> (parseInt(price.value||0)||0); // 仕様どおり「車両本体」
-  const principal = ()=> Math.max(0, basePrice() + (parseInt(fees.value||0)||0) - (parseInt(down.value||0)||0) - (parseInt(trade.value||0)||0));
-  const clampPct = p => Math.max(0, Math.min(p, 90));
-  const clampYen = y => Math.max(0, Math.min(y, Math.floor(principal()*0.9)));
+  const basePrice = ()=> (parseInt(price.value||0)||0); // 率の基準：車両本体（税込）
+  const principal = ()=> Math.max(0, basePrice() + (parseInt(fees.value||0)||0)
+                                      - (parseInt(down.value||0)||0)
+                                      - (parseInt(trade.value||0)||0));
+  const clampPct = p => Math.max(0, Math.min(p, 90));        // 90% までOK（入力保持）
+  const clampYen = y => Math.max(0, Math.min(y, Math.floor(principal()*0.9))); // 上限＝元金の90%
+  const r100 = v => Math.round(v/100)*100; // 百円単位
 
+  // ％ → 金額（％欄は書き換えない＝入力そのまま保持）
   pctEl?.addEventListener('input', ()=>{
-    const p = clampPct(parseFloat(pctEl.value)||0);
-    const y = clampYen(Math.round(basePrice()*p/100/100)*100);
+    const pIn   = parseFloat(pctEl.value)||0;
+    const p     = clampPct(pIn);
+    const ideal = r100(basePrice()*p/100);
+    const cap   = Math.floor(principal()*0.9);
+    const y     = clampYen(ideal);
     yenEl.value = String(y);
+
+    // 上限に当たったか表示
+    if (y < ideal && cap >= 0) {
+      hint.textContent = `基準=車両本体: ¥${basePrice().toLocaleString('ja-JP')}｜入力 ${p.toFixed(1)}% → 金額は上限(元金の90%: ¥${cap.toLocaleString('ja-JP')})で制限中`;
+    } else {
+      hint.textContent = `残価率の基準：車両本体価格（税込）。上限は元金の90%（残価は百円単位）。`;
+    }
+
+    // 既存ロジック起動
     yenEl.dispatchEvent(new Event('input',{bubbles:true}));
     yenEl.dispatchEvent(new Event('change',{bubbles:true}));
   });
 
+  // 金額 → ％（金額から逆算した見かけの％を表示、ただし90で打ち止め）
   yenEl?.addEventListener('input', ()=>{
     const y = clampYen(parseInt(yenEl.value||0)||0);
     const b = basePrice();
     const p = b>0 ? (y/b*100) : 0;
     pctEl.value = clampPct(p).toFixed(1);
+
+    hint.textContent = `残価率の基準：車両本体価格（税込）。上限は元金の90%（残価は百円単位）。`;
     pctEl.dispatchEvent(new Event('input',{bubbles:true}));
     pctEl.dispatchEvent(new Event('change',{bubbles:true}));
   });
 })();
 </script>
+
 
 </body>
 </html>
