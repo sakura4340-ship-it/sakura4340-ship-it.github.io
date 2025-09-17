@@ -15,30 +15,13 @@ const APP_SHELL = [
 ];
 
 // ====== install：シェルを事前キャッシュ、即時適用準備 ======
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(PRECACHE).then(c => c.addAll(APP_SHELL)));
-  self.skipWaiting(); // 新SWを waiting に止めずすぐ有効化へ
-});
+self.addEventListener('install', (e) => self.skipWaiting());
 
 // ====== activate：旧キャッシュ掃除＆既存タブも新SW管理へ ======
-self.addEventListener("activate", (e) => {
-  e.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.map(k => {
-      const isOld = (k.startsWith("loanpro-precache-") || k.startsWith("loanpro-runtime-")) && !k.endsWith(VERSION);
-      return isOld ? caches.delete(k) : null;
-    }));
-    await self.clients.claim();
-  })());
-});
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 // ====== fetch：HTMLはネット優先、静的はキャッシュ優先 ======
-self.addEventListener("fetch", (e) => {
-  const req = e.request;
-  if (req.method !== "GET") return;
-
-  const accept = req.headers.get("accept") || "";
-  const isHTML = accept.includes("text/html");
+self.addEventListener('fetch', () => {}); // まずは素通し
 
   if (isHTML) {
     // オフライン時のフォールバックも考慮
