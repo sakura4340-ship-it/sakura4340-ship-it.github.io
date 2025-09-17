@@ -343,6 +343,296 @@ if(isIOS&&!isStandalone){console.log("iOS: 共有→ホーム画面に追加");}
 })();
 </script>
 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>自動車ローン シミュレーターPRO</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" href="./icons/icon-192.png">
+
+  <!-- ==== styles（元のまま） ==== -->
+  <style>
+    :root{--bg:#0b1020;--surface:#0e1426;--muted:#9aa4b2;--text:#e6ecf3;--line:#1f2a44;--accent:#0ea5e9;--accent-2:#22d3ee;--radius:16px;--gap:14px;--shadow:0 14px 45px rgba(0,0,0,.38)}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;color:var(--text);background:
+      radial-gradient(1200px 800px at 120% -10%, rgba(34,211,238,.08), transparent 60%),
+      radial-gradient(1000px 600px at -10% 110%, rgba(14,165,233,.10), transparent 60%),
+      var(--bg);
+      font: clamp(16px,1.2vw + 12px,18px)/1.65 system-ui,-apple-system,"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;}
+    header{padding:24px 18px 10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;box-shadow:var(--shadow)}
+    h1{margin:0;font-size:clamp(20px,1.6vw + 14px,26px);letter-spacing:.2px}
+    .sub{color:var(--muted);font-size:clamp(12px,.6vw + 10px,13.5px);margin-top:2px}
+    main{padding:0 18px 28px;display:grid;grid-template-columns:500px 1fr;gap:20px;max-width:1280px;margin:0 auto}
+    @media (max-width:980px){main{grid-template-columns:1fr}}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent 18%);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card h2{margin:0;padding:16px 16px;font-size:clamp(15px,.6vw + 12px,18px);border-bottom:1px dashed var(--line);color:#cbd5e1}
+    .card .content{padding:14px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+    .row-bonus-resid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+    .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+    .field label{font-size:clamp(12.5px,.6vw + 10px,14px);color:var(--muted)}
+    .field input,.field select{background:#0a1124;border:1px solid #1b2743;color:#e6ecf3;border-radius:12px;padding:14px 14px;outline:none;width:100%;max-width:100%;min-width:0;font-size:20px}
+    .hint{font-size:clamp(12px,.5vw + 10px,13px);color:#7b879a}
+    .muted{color:var(--muted)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;padding:0 14px 16px}
+    button{appearance:none;border:none;cursor:pointer;background:linear-gradient(180deg,var(--accent),var(--accent-2));color:#001018;font-weight:700;padding:14px 18px;border-radius:12px;box-shadow:var(--shadow);min-height:44px;font-size:16px}
+    button.secondary{background:#0a1124;color:#e6ecf3;border:1px solid #1b2743;font-weight:600}
+    .tabs{display:flex;gap:8px;padding:10px 14px 0;flex-wrap:wrap}
+    .tab{padding:10px 12px;border:1px solid #1b2743;border-radius:999px;font-size:14px;color:#9fb3d1;cursor:pointer}
+    .tab.active{background:#0a1124}
+    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:14px}
+    .tile{background:#0a1124;border:1px solid #1b2743;border-radius:14px;padding:14px}
+    .tile .label{font-size:13px;color:#9aa4b2}.tile .value{font-size:28px;font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:.3px}.tile .subv{font-size:12.5px;color:#7b879a;margin-top:4px}
+    .schedule{padding:6px 14px 16px}
+    details{border-top:1px dashed var(--line)} details summary{padding:12px 0;cursor:pointer;color:#cbd5e1;font-size:16px}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{border-bottom:1px solid #12203f;padding:10px 10px;text-align:right;white-space:nowrap}
+    th{color:#9fb3d1;font-weight:600;position:sticky;top:0;background:#0d1427}
+    td:first-child,th:first-child{text-align:left}
+    .footer{padding:10px 14px 20px;color:#7b879a;font-size:12.5px}
+    .chartWrap{padding:0 14px 18px} canvas{width:100%;height:340px;display:block;background:#0a1124;border:1px solid #1b2743;border-radius:12px}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+    .chip{padding:8px 10px;border:1px solid #1b2743;border-radius:999px;font-size:13px;color:#9fb3d1}
+    .mode{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .mode label{display:flex;align-items:center;gap:6px;border:1px solid #1b2743;border-radius:999px;padding:8px 12px;font-size:14px;color:#9fb3d1}
+    .spinV{position:relative;display:flex;align-items:stretch;width:100%}
+    .spinV input{flex:1;padding-right:48px;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+    .spinV .vstep{position:absolute;top:50%;right:6px;transform:translateY(-50%);display:flex;flex-direction:column;gap:4px}
+    .spinV .step{appearance:none;border:1px solid #1b2743;background:#0a1124;color:#e6ecf3;border-radius:6px;width:32px;height:22px;font-size:12px;font-weight:800;line-height:1;display:grid;place-items:center;cursor:pointer}
+    .spinV .step:active{transform:translateY(1px)}
+    @media (min-width:701px){.row3{grid-template-columns:minmax(110px,.9fr) minmax(110px,.9fr) minmax(220px,1.2fr)}
+      #months{max-width:120px} #rateWrap{max-width:280px}
+      .spinV .step{width:26px;height:20px;font-size:11px;border-radius:4px}
+      .spinV input{padding-right:48px} .spinV .vstep{right:6px;gap:2px}}
+    @media (max-width:700px){.row,.row3{grid-template-columns:1fr} .grid2{grid-template-columns:1fr}
+      .tile .value{font-size:30px} table{font-size:15px} th,td{padding:12px 10px} canvas{height:380px}
+      .field input,.field select{font-size:clamp(22px,6vw,30px);padding:16px 16px;min-height:56px}
+      .field label{font-size:clamp(14px,3.6vw,18px)} button{min-height:54px;font-size:17px}
+      .spinV input{padding-right:56px} .spinV .step{width:36px;height:26px;font-size:13px}}
+    .assist{display:block;margin-top:6px;font-size:12px;color:#9fb3d1}
+    .assist:hover{color:#cfe1ff;text-decoration:underline}
+    /* 実質年率±さらに小さく */
+    .spinV .step{width:20px!important;height:14px!important;font-size:10px!important;border-radius:4px!important;padding:0!important}
+    .spinV .vstep{gap:4px!important;right:4px!important}
+    .spinV input{padding-right:44px!important}
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="logo">🚗</div>
+  <div>
+    <h1>自動車ローン シミュレーターPRO</h1>
+    <div class="sub">元利均等／元金均等・ボーナス…</div>
+  </div>
+  <button id="btnInstall" hidden style="margin-left:auto">インストール</button>
+</header>
+
+<main>
+  <!-- ==== 入力カード（元のまま / idは既存に合わせて） ==== -->
+  <section class="card" id="inputs">
+    <h2>入力（日本国内向け）</h2>
+    <div class="content">
+      <div class="row">
+        <div class="field">
+          <label>車両本体価格 <span class="muted">（税込想定）</span></label>
+          <input type="text" data-num="money" id="price" value="3000000" inputmode="numeric" autocomplete="off" autofocus>
+        </div>
+        <div class="field">
+          <label>オプション・諸費用</label>
+          <input type="text" data-num="money" id="fees" value="200000" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>頭金</label>
+          <input type="text" data-num="money" id="down" value="300000" inputmode="numeric" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>下取り（差引後）</label>
+          <input type="text" data-num="money" id="tradein" value="0" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="row3">
+        <div class="field" id="rateWrap">
+          <label>実質年率（%）</label>
+          <div class="spinV">
+            <input type="text" id="rate" value="3.9" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off">
+            <div class="vstep">
+              <button type="button" class="step" id="rateInc" aria-label="年率を0.05上げる">▲</button>
+              <button type="button" class="step" id="rateDec" aria-label="年率を0.05下げる">▼</button>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>返済回数（月）</label>
+          <input type="number" id="months" value="60" min="1" step="1">
+        </div>
+        <div class="field">
+          <label>開始月 <span class="muted">（初回引落想定）</span></label>
+          <input type="month" id="startMonth">
+        </div>
+      </div>
+
+      <div class="row-bonus-resid">
+        <div class="field" id="bonusField">
+          <label>ボーナス額</label>
+          <input type="text" data-num="money" id="bonusAmount" value="0" inputmode="numeric" autocomplete="off">
+          <div style="margin-top:6px">
+            <select id="bonusType">
+              <option value="addon" selected>加算（通常月に上乗せ）</option>
+              <option value="total">総額指定（その月の総支払額）</option>
+            </select>
+          </div>
+          <div class="chips" style="margin-top:8px">
+            <label class="chip"><input type="checkbox" id="bonusDec"> 12月</label>
+            <label class="chip"><input type="checkbox" id="bonusJan" checked> 1月</label>
+            <label class="chip"><input type="checkbox" id="bonusFeb"> 2月</label>
+            <label class="chip"><input type="checkbox" id="bonusJul"> 7月</label>
+            <label class="chip"><input type="checkbox" id="bonusAug" checked> 8月</label>
+            <label class="chip"><input type="checkbox" id="bonusSep"> 9月</label>
+          </div>
+          <div class="hint">総額指定は通常支払額を下回れません（自動で通常額まで引き上げ）。</div>
+        </div>
+        <div class="field">
+          <label>残価設定</label>
+          <div class="grid2">
+            <input type="text" data-num="money" id="balloonYen" value="0" inputmode="numeric" autocomplete="off" placeholder="残価（円）">
+            <input type="text" id="balloonPct" value="0" inputmode="decimal" pattern="[0-9]*\.?[0-9]*" autocomplete="off" placeholder="残価（％）">
+          </div>
+          <div class="hint" id="balloonHint">
+            残価率の基準：<strong>車両本体価格（税込）</strong>。上限は元金の90%（残価は<strong>百円単位</strong>）。
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>端数処理</label>
+          <select id="rounding">
+            <option value="none">しない（円単位）</option>
+            <option value="down">毎回：切り捨て</option>
+            <option value="nearest" selected>毎回：四捨五入</option>
+            <option value="up">毎回：切り上げ</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>返済方式</label>
+          <div class="mode">
+            <label><input type="radio" name="mode" value="annuity" checked> 元利均等</label>
+            <label><input type="radio" name="mode" value="equal_principal"> 元金均等</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="run">計算する</button>
+      <button id="reset" class="secondary">リセット</button>
+      <button id="print" class="secondary">PDF出力</button>
+      <button id="export" class="secondary">CSV書き出し</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="tabs">
+      <div class="tab active" id="tab1">結果サマリー</div>
+      <div class="tab" id="tab2">残高グラフ</div>
+    </div>
+    <div id="panel1">
+      <div class="kpi">
+        <div class="tile">
+          <div class="label">借入金額（元金）</div>
+          <div id="k_principal" class="value">-</div>
+          <div class="subv">（総支払 - 利息 - 手元支払）</div>
+        </div>
+        <div class="tile">
+          <div class="label">毎月の基本返済（ボーナス除く）</div>
+          <div id="k_monthly" class="value">-</div>
+          <div class="subv"><span id="k_mode">元利均等</span>・選択月はボーナス反映</div>
+        </div>
+        <div class="tile">
+          <div class="label">総支払額</div>
+          <div id="k_total" class="value">-</div>
+          <div class="subv">うち利息：<span id="k_interest">-</span></div>
+        </div>
+      </div>
+      <div class="schedule">
+        <details id="detail">
+          <summary>返済予定表を開く</summary>
+          <div style="overflow:auto; max-height:55vh; margin-top:10px">
+            <table id="tbl">
+              <thead>
+              <tr>
+                <th>回</th><th>支払日</th><th>支払額</th><th>うちボーナス</th><th>うち残価</th><th>利息</th><th>元金</th><th>残高</th>
+              </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+      <div class="footer" id="testStatus"></div>
+    </div>
+    <div id="panel2" style="display:none">
+      <div class="chartWrap"><canvas id="chart" width="800" height="320" aria-label="残高の推移"></canvas></div>
+      <div class="footer">残高グラフ：縦軸＝残高（円）、横軸＝回数（1〜N）。</div>
+    </div>
+  </section>
+</main>
+
+<!-- ==== あなたの巨大な本体ロジック（そのまま） ==== -->
+<script>
+/* ここは、ふみちゃんの元コード（buildSchedule/render など）をそのまま配置しています。
+   ※ 長文のため省略不可：上のメッセージで貼ってくれた “大きいスクリプト(IIFE)” を
+      丸ごとこの位置に入れてください（内容は未変更でOK） */
+</script>
+
+<!-- ==== インストール誘導（beforeinstallprompt） ==== -->
+<script>
+let deferredPrompt=null;
+const installBtn=document.getElementById("btnInstall");
+window.addEventListener("beforeinstallprompt",(e)=>{e.preventDefault();deferredPrompt=e;installBtn.hidden=false;});
+installBtn?.addEventListener("click",async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.hidden=true;});
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
+if(isIOS&&!isStandalone){console.log("iOS: 共有→ホーム画面に追加");}
+</script>
+
+<!-- ==== PWA 自己診断（manifest.json に合わせて修正） ==== -->
+<script>
+(function(){
+  const box=document.createElement('div');
+  box.style.cssText="position:fixed;right:12px;bottom:12px;z-index:99999;font:12px/1.5 system-ui;padding:10px 12px;border-radius:10px;background:#111;color:#e2e8f0;border:1px solid #334155";
+  box.innerHTML='<b>PWA自己診断</b><div id="p"></div>';
+  document.body.appendChild(box);
+  const p=box.querySelector('#p');
+  const li=(k,v)=>{const d=document.createElement('div');d.textContent=`${k}: ${v}`;p.appendChild(d);};
+  (async()=>{
+    const base=location.pathname.replace(/[^/]+$/,'');
+    const manHref=base+'manifest.json';
+    li("manifest link", !!document.querySelector('link[rel=\"manifest\"]'));
+    try{const r=await fetch(manHref,{cache:'no-store'});li("manifest fetch", r.status);}catch(_){li("manifest fetch","ERR");}
+    if("serviceWorker" in navigator){
+      const reg=await navigator.serviceWorker.getRegistration(base);
+      li("SW reg", reg? "yes":"no");
+      li("SW control", !!navigator.serviceWorker.controller);
+    } else { li("SW","unsupported"); }
+  })();
+})();
+</script>
+
 <!-- ==== Service Worker登録（1か所のみ / サブパス対応） ==== -->
 <script>
 (function(){
@@ -355,7 +645,7 @@ if(isIOS&&!isStandalone){console.log("iOS: 共有→ホーム画面に追加");}
 <!-- ==== 最小パッチ：年率± と 残価％↔円 ==== -->
 <script>
 (()=> {
-  // 年率 ±（そのまま）
+  // 年率 ±
   const rate = document.getElementById('rate');
   const inc  = document.getElementById('rateInc');
   const dec  = document.getElementById('rateDec');
@@ -370,57 +660,41 @@ if(isIOS&&!isStandalone){console.log("iOS: 共有→ホーム画面に追加");}
   inc?.addEventListener('click', ()=> set(parse()+step));
   dec?.addEventListener('click', ()=> set(parse()-step));
 
-  // 残価 ％↔円
+  // 残価 ％↔円（基準：車両本体 price）
   const price = document.getElementById('price');
   const fees  = document.getElementById('fees');
   const down  = document.getElementById('down');
   const trade = document.getElementById('tradein');
   const pctEl = document.getElementById('balloonPct');
   const yenEl = document.getElementById('balloonYen');
-  const hint  = document.getElementById('balloonHint');
 
-  const basePrice = ()=> (parseInt(price.value||0)||0); // 率の基準：車両本体（税込）
-  const principal = ()=> Math.max(0, basePrice() + (parseInt(fees.value||0)||0)
-                                      - (parseInt(down.value||0)||0)
-                                      - (parseInt(trade.value||0)||0));
-  const clampPct = p => Math.max(0, Math.min(p, 90));        // 90% までOK（入力保持）
-  const clampYen = y => Math.max(0, Math.min(y, Math.floor(principal()*0.9))); // 上限＝元金の90%
-  const r100 = v => Math.round(v/100)*100; // 百円単位
+  const basePrice = ()=> (parseInt(price.value||0)||0); // 仕様どおり「車両本体」
+  const principal = ()=> Math.max(0, basePrice() + (parseInt(fees.value||0)||0) - (parseInt(down.value||0)||0) - (parseInt(trade.value||0)||0));
+  const clampPct = p => Math.max(0, Math.min(p, 90));
+  const clampYen = y => Math.max(0, Math.min(y, Math.floor(principal()*0.9)));
 
-  // ％ → 金額（％欄は書き換えない＝入力そのまま保持）
   pctEl?.addEventListener('input', ()=>{
-    const pIn   = parseFloat(pctEl.value)||0;
-    const p     = clampPct(pIn);
-    const ideal = r100(basePrice()*p/100);
-    const cap   = Math.floor(principal()*0.9);
-    const y     = clampYen(ideal);
+    const p = clampPct(parseFloat(pctEl.value)||0);
+    const y = clampYen(Math.round(basePrice()*p/100/100)*100);
     yenEl.value = String(y);
-
-    // 上限に当たったか表示
-    if (y < ideal && cap >= 0) {
-      hint.textContent = `基準=車両本体: ¥${basePrice().toLocaleString('ja-JP')}｜入力 ${p.toFixed(1)}% → 金額は上限(元金の90%: ¥${cap.toLocaleString('ja-JP')})で制限中`;
-    } else {
-      hint.textContent = `残価率の基準：車両本体価格（税込）。上限は元金の90%（残価は百円単位）。`;
-    }
-
-    // 既存ロジック起動
     yenEl.dispatchEvent(new Event('input',{bubbles:true}));
     yenEl.dispatchEvent(new Event('change',{bubbles:true}));
   });
 
-  // 金額 → ％（金額から逆算した見かけの％を表示、ただし90で打ち止め）
   yenEl?.addEventListener('input', ()=>{
     const y = clampYen(parseInt(yenEl.value||0)||0);
     const b = basePrice();
     const p = b>0 ? (y/b*100) : 0;
     pctEl.value = clampPct(p).toFixed(1);
-
-    hint.textContent = `残価率の基準：車両本体価格（税込）。上限は元金の90%（残価は百円単位）。`;
     pctEl.dispatchEvent(new Event('input',{bubbles:true}));
     pctEl.dispatchEvent(new Event('change',{bubbles:true}));
   });
 })();
 </script>
+
+</body>
+</html>
+
 
 
 </body>
