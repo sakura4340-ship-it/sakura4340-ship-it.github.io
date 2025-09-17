@@ -1303,6 +1303,32 @@
   });
 </script>
 
+<script>
+(function(){
+  const box=document.createElement('div');
+  box.style.cssText="position:fixed;right:12px;bottom:12px;z-index:99999;font:12px/1.5 system-ui;padding:10px 12px;border-radius:10px;background:#111;color:#e2e8f0;border:1px solid #334155";
+  box.innerHTML='<b>PWA自己診断</b><div id="p"></div><button id="Xbtn" hidden style="margin-top:8px;padding:6px 10px;border:1px solid #334155;border-radius:8px;background:#0b1220;color:#e2e8f0;cursor:pointer">インストール</button>';
+  document.body.appendChild(box);
+  const p=box.querySelector('#p'), X=box.querySelector('#Xbtn');
+  const li=(k,v)=>{const d=document.createElement('div');d.textContent=`${k}: ${v}`;p.appendChild(d);};
+
+  let DP=null;
+  window.addEventListener("beforeinstallprompt",(e)=>{e.preventDefault();DP=e;X.hidden=false;li("beforeinstallprompt","OK");});
+  X.addEventListener("click",async()=>{if(!DP)return;DP.prompt();await DP.userChoice;DP=null;X.hidden=true;});
+
+  (async()=>{
+    li("manifest link", !!document.querySelector('link[rel="manifest"]'));
+    try{const r=await fetch('/manifest.webmanifest',{cache:'no-store'});li("manifest fetch", r.status);}catch(e){li("manifest fetch","ERR");}
+    if("serviceWorker"in navigator){
+      const reg=await navigator.serviceWorker.getRegistration();
+      li("SW reg", reg? "yes":"no");
+      li("SW control", !!navigator.serviceWorker.controller);
+    }else{ li("SW","unsupported");}
+  })();
+})();
+</script>
+
+    
 </body>
 
 </html>
