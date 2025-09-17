@@ -587,16 +587,18 @@
         }
     </style>
 </head>
-<button id="btnInstall" hidden>インストール</button>
+
 
 <body>
-    <header>
-        <div class="logo">🚗</div>
-        <div>
-            <h1>自動車ローン シミュレーターPRO</h1>
-            <div class="sub">元利均等／元金均等・ボーナス（加算/総額指定）・残価％/円（相互連動）・グラフ表示</div>
-        </div>
-    </header>
+  <header>
+  <div class="logo">🚗</div>
+  <div>
+    <h1>自動車ローン シミュレーターPRO</h1>
+    <div class="sub">元利均等／元金均等・ボーナス…</div>
+  </div>
+  <button id="btnInstall" hidden style="margin-left:auto">インストール</button>
+</header>
+
 
     <main>
         <section class="card" id="inputs">
@@ -1000,49 +1002,74 @@
                     }
                     return { mode: '元利均等', principal, baseMonthly: roundPay100(baseMonthly, inp.rounding), totalPay: Math.round(totalPay), totalInterest: Math.round(totalInt), totalBonus, balloon, rows };
 
-                } else {
-                    /* 元金均等：各月の通常額=（計画元金＋利息）。総額指定は下限max(指定,通常) */
-                    if (monthsAmort === 0) {
-                        const rows = [{ idx: 1, date: new Date(inp.startDate), pay: balloon, bonus: 0, balloon, interest: 0, principal: balloon, balance: 0 }];
-                        return { mode: '元金均等', principal, baseMonthly: 0, totalPay: balloon, totalInterest: 0, totalBonus: 0, balloon, rows };
-                    }
+           } else {
+  /* 元金均等：各月の通常額=（計画元金＋利息）。総額指定は下限max(指定,通常) */
+  if (monthsAmort === 0) {
+    const rows = [{ idx: 1, date: new Date(inp.startDate), pay: balloon, bonus: 0, balloon, interest: 0, principal: balloon, balance: 0 }];
+    return { mode: '元金均等', principal, baseMonthly: 0, totalPay: balloon, totalInterest: 0, totalBonus: 0, balloon, rows };
+  }
 
-                    const rows = []; let bal = principal, totalPay = 0, totalInt = 0, totalBonus = 0;
-                    let d = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
-                    const monthlyPrincipal = Math.max(0, (principal - balloon) / monthsAmort);
-                    let firstBaseMonthly = 0;
+  const rows = [];
+  let bal = principal, totalPay = 0, totalInt = 0, totalBonus = 0;
+  let d = new Date(inp.startDate.getFullYear(), inp.startDate.getMonth(), 1);
 
-                    for (let i = 0; i < monthsAmort; i++) {
-                        const interest = Math.round(bal * r);
-                        const prinPlan = (i === monthsAmort - 1 ? Math.max(0, bal) : monthlyPrincipal);
-                        const usual = prinPlan + interest;
-                        pay = isTotal ? Math.max(inp.bonusAmount, usual) : (usual + inp.bonusAmount);
-                        let pay;
-                        if (bonusSet.has(d.getMonth())) {
-                            pay =// 総額指定は max(指定額, 通常額)
-                                isTotal ? Math.max(inp.bonusAmount, baseMonthly) : baseMonthly + inp.bonusAmount
+  const monthlyPrincipal = Math.max(0, (principal - balloon) / monthsAmort);
+  let firstBaseMonthly = 0;
 
-                        } else {
-                            pay = usual;
-                        }
-                        pay = roundPay100(pay, inp.rounding);
-                        const prin = Math.max(0, pay - interest);
-                        bal = Math.max(0, bal - prin);
+  for (let i = 0; i < monthsAmort; i++) {
+    const interest = Math.round(bal * r);
+    const prinPlan = (i === monthsAmort - 1 ? Math.max(0, bal) : monthlyPrincipal);
+    const usual = prinPlan + interest;          // 通常月の合計（元金＋利息）
 
-                        if (i === 0) firstBaseMonthly = roundPay100(usual, inp.rounding);
-                        const bonusDisp = Math.max(0, pay - roundPay100(usual, inp.rounding));
+    // ★ボーナス月の支払い額（総額指定=通常額とのmax / 加算=通常＋指定額）
+    let pay = usual;
+    if (bonusSet.has(d.getMonth())) {
+      pay = isTotal ? Math.max(inp.bonusAmount, usual) : (usual + inp.bonusAmount);
+    }
 
-                        totalPay += pay; totalInt += Math.max(0, interest); totalBonus += bonusDisp;
-                        rows.push({ idx: i + 1, date: new Date(d), pay, bonus: bonusDisp ? bonusDisp : 0, balloon: 0, interest, principal: prin, balance: bal });
-                        d = nextMonth(d);
-                    }
-                    if (balloon > 0) {
-                        rows.push({ idx: monthsAmort + 1, date: new Date(d), pay: balloon, bonus: 0, balloon, interest: 0, principal: balloon, balance: 0 });
-                        totalPay += balloon;
-                    }
-                    return { mode: '元金均等', principal, baseMonthly: firstBaseMonthly, totalPay: Math.round(totalPay), totalInterest: Math.round(totalInt), totalBonus, balloon, rows };
-                }
-            }
+    pay = roundPay100(pay, inp.rounding);
+
+    const prin = Math.max(0, pay - interest);
+    bal = Math.max(0, bal - prin);
+
+    if (i === 0) firstBaseMonthly = roundPay100(usual, inp.rounding);  // 最初の通常支払をベース額として表示
+    const bonusDisp = Math.max(0, pay - roundPay100(usual, inp.rounding));
+
+    totalPay += pay;
+    totalInt += Math.max(0, interest);
+    totalBonus += bonusDisp;
+
+    rows.push({
+      idx: i + 1,
+      date: new Date(d),
+      pay,
+      bonus: bonusDisp ? bonusDisp : 0,
+      balloon: 0,
+      interest,
+      principal: prin,
+      balance: bal
+    });
+
+    d = nextMonth(d);
+  }
+
+  if (balloon > 0) {
+    rows.push({ idx: monthsAmort + 1, date: new Date(d), pay: balloon, bonus: 0, balloon, interest: 0, principal: balloon, balance: 0 });
+    totalPay += balloon;
+  }
+
+  return {
+    mode: '元金均等',
+    principal,
+    baseMonthly: firstBaseMonthly,
+    totalPay: Math.round(totalPay),
+    totalInterest: Math.round(totalInt),
+    totalBonus,
+    balloon,
+    rows
+  };
+}
+
 
             /* 表示系 */
             const k_principal = document.getElementById('k_principal');
@@ -1217,91 +1244,53 @@
             window.addEventListener("load", showAssist);
         })();
     </script>
-
-    <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(console.error);
-    });
-  }
-
-  let deferredPrompt = null;
-  const btn = document.getElementById("btnInstall");
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    if (btn) btn.hidden = false;
-  });
-  if (btn) btn.addEventListener("click", async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    btn.hidden = true;
-  });
-
-  // iOSは共有→ホーム画面に追加
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-  if (isIOS && !isStandalone) {
-    // 必要ならガイドUIをここで表示
-  }
-</script>
 <script>
-  // --- Service Worker 登録 ---
+  // --- Service Worker 登録（ルート配信なので絶対パス） ---
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
       try {
         const reg = await navigator.serviceWorker.register("/sw.js");
-        // 初回はSWがコントロール外 → 次回ロードでbeforeinstallpromptが来ることがある
-        console.log("SW:", reg);
-      } catch (e) { console.error("SW register error:", e); }
+        console.log("[SW] registered:", reg.scope);
+      } catch (e) { console.error("[SW] register error:", e); }
     });
   }
 
-  // --- インストール誘導（Chrome/Edge専用） ---
+  // --- インストール誘導（Chrome/Edge） ---
   let deferredPrompt = null;
-  const installBtn = document.getElementById("btnInstall") || (() => {
-    // ボタンが無ければ暫定で作る
-    const b = document.createElement("button");
-    b.id = "btnInstall";
-    b.textContent = "インストール";
-    b.hidden = true;
-    b.style.cssText = "position:fixed;right:12px;bottom:12px;padding:10px 14px;border-radius:10px;border:1px solid #334155;background:#111827;color:#e2e8f0;z-index:99999;cursor:pointer";
-    document.body.appendChild(b);
-    return b;
-  })();
+  const installBtn = document.getElementById("btnInstall");
 
-  // 1回でも「後で」にすると当面抑制される → ユーザー操作でのみ再表示
   window.addEventListener("beforeinstallprompt", (e) => {
-    console.log("beforeinstallprompt fired");
-    e.preventDefault();                 // 既定のバナーを止める
-    deferredPrompt = e;                 // 後でprompt()するため保持
-    installBtn.hidden = false;          // ボタンを表示
+    e.preventDefault();
+    deferredPrompt = e;
+    if (installBtn) installBtn.hidden = false;
+    console.log("beforeinstallprompt");
   });
 
-  installBtn.addEventListener("click", async () => {
+  if (installBtn) installBtn.addEventListener("click", async () => {
     if (!deferredPrompt) return;
-    deferredPrompt.prompt();            // バナー表示（※ユーザー操作必須）
-    const choice = await deferredPrompt.userChoice;
-    console.log("PWA install choice:", choice.outcome);
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
     deferredPrompt = null;
-    installBtn.hidden = true;           // 成否に関わらず一旦隠す（連打防止）
+    installBtn.hidden = true;
   });
 
-  // --- iOSはボタンが出ない仕様 → ガイド表示（任意） ---
+  // --- iOSはボタンが出ない仕様（共有→ホーム画面に追加） ---
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   if (isIOS && !isStandalone) {
-    // ここで「共有 → ホーム画面に追加」ガイドを出すなら出す
-    console.log("iOS: ホーム画面に追加を使用");
+    // ここでガイドUIを出すなら出す
+    console.log("iOS: 共有→ホーム画面に追加");
   }
 
-  // --- 既にインストール済みならボタン隠す ---
-  window.matchMedia('(display-mode: standalone)').addEventListener('change', e => {
-    if (e.matches) installBtn.hidden = true;
-  });
+  // 既にインストール済みならボタン隠す
+  if (window.matchMedia) {
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', e => {
+      if (e.matches && installBtn) installBtn.hidden = true;
+    });
+  }
 </script>
+
+
 
 <script>
 (function(){
