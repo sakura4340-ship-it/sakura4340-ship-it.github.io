@@ -1346,6 +1346,115 @@ if ('serviceWorker' in navigator) {
   }).catch(err => console.error("SW failed:", err));
 }
 </script>
+<script>
+// ===== ユーティリティ =====
+const num = v => {
+  const s = (v ?? '').toString().trim().replace(/[,\s]/g, '');
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+};
+const set = (el, v) => { el.value = (Number.isFinite(v) ? v : 0).toString(); };
+
+// DOM取得（IDが違うならここだけ置き換えて）
+const el = {
+  price:        document.getElementById('price'),        // 車両本体（税込想定）
+  options:      document.getElementById('options'),      // オプション・諸費用
+  down:         document.getElementById('down'),         // 頭金
+  tradein:      document.getElementById('tradein'),      // 下取り（差引後）
+  apr:          document.getElementById('apr'),          // 実質年率（%）
+  aprInc:       document.getElementById('apr-inc'),      // 実質年率 + ボタン
+  aprDec:       document.getElementById('apr-dec'),      // 実質年率 - ボタン
+  months:       document.getElementById('months'),       // 返済回数（月）
+  residualPct:  document.getElementById('residualPct'),  // 残価設定（％）
+  residualAmt:  document.getElementById('residualAmt'),  // 残価設定額（円）
+  bonusAmt:     document.getElementById('bonusAmt')      // ボーナス併用額（なければnullでもOK）
+};
+
+// 存在しないIDがあっても落ちないように
+const on = (target, ev, fn) => target && target.addEventListener(ev, fn);
+
+// ========== 実質年率 ± ボタン ==========
+const stepAPR = 0.1; // 0.1%刻み（必要なら変えてOK）
+on(el.aprInc, 'click', () => {
+  const v = +(num(el.apr.value).toFixed(2)) + stepAPR;
+  set(el.apr, +v.toFixed(2));
+  recalc();
+});
+on(el.aprDec, 'click', () => {
+  const v = +(num(el.apr.value).toFixed(2)) - stepAPR;
+  set(el.apr, Math.max(0, +v.toFixed(2)));
+  recalc();
+});
+
+// ========== 残価 ％ ⇄ 金額 双方向連動 ==========
+function syncResidualFromPct() {
+  const base = num(el.price?.value) + num(el.options?.value);
+  const pct  = num(el.residualPct?.value); // 例: 30 → 30%
+  const amt  = Math.round(base * pct / 100);
+  if (el.residualAmt) set(el.residualAmt, amt);
+  recalc();
+}
+function syncResidualFromAmt() {
+  const base = num(el.price?.value) + num(el.options?.value);
+  const amt  = num(el.residualAmt?.value);
+  const pct  = base > 0 ? (amt / base * 100) : 0;
+  if (el.residualPct) set(el.residualPct, +pct.toFixed(1));
+  recalc();
+}
+on(el.residualPct, 'input',  syncResidualFromPct);
+on(el.residualAmt, 'input',  syncResidualFromAmt);
+
+// ========== メイン再計算（最低限） ==========
+function monthlyPayment({ principal, annualRate, n, fv=0 }) {
+  // 元利均等：PMT = (P*r + fv*r) / (1 - (1+r)^-n)
+  // r=月利, fv=最終回残価（将来価値）
+  const r = annualRate / 12;
+  if (n <= 0) return 0;
+  if (Math.abs(r) < 1e-12) return (principal - fv) / n;
+  const pow = Math.pow(1 + r, -n);
+  return (principal*r + fv*r) / (1 - pow) + (principal - fv) * (r / (1 - pow) - r); // 安定化
+}
+
+function recalc() {
+  // 入力値
+  const price     = num(el.price?.value);
+  const options   = num(el.options?.value);
+  const down      = num(el.down?.value);
+  const tradein   = num(el.tradein?.value);
+  const apr       = num(el.apr?.value) / 100; // 実質年率（%→小数）
+  const months    = Math.max(0, Math.floor(num(el.months?.value)));
+  const residual  = num(el.residualAmt?.value); // 金額ベース
+  const bonus     = num(el.bonusAmt?.value);
+
+  // 借入元本
+  const subtotal  = price + options;
+  const principal = Math.max(0, subtotal - down - tradein);
+
+  // 月々支払（残価考慮）
+  const baseMonthly = monthlyPayment({
+    principal,
+    annualRate: apr,
+    n: months,
+    fv: residual
+  });
+
+  // ボーナス併用（年2回想定）：月額から按分して引く
+  const bonusMonthlyOff = bonus > 0 ? bonus * 2 / 12 : 0;
+  const monthly = Math.max(0, baseMonthly - bonusMonthlyOff);
+
+  // ここで画面の表示要素に反映したい場合は、idを合わせて代入してください
+  // 例: document.getElementById('monthly').textContent = Math.round(monthly).toLocaleString();
+}
+
+// 入力に反応して常に再計算
+['input','change'].forEach(ev=>{
+  [el.price, el.options, el.down, el.tradein, el.apr, el.months, el.residualAmt, el.residualPct, el.bonusAmt]
+    .filter(Boolean).forEach(node=> on(node, ev, recalc));
+});
+
+// 初期起動
+document.addEventListener('DOMContentLoaded', recalc);
+</script>
 
 </body>
 
