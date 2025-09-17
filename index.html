@@ -247,12 +247,50 @@
   </section>
 </main>
 
-<!-- ==== あなたの巨大な本体ロジック（そのまま） ==== -->
-<script>
-/* ここは、ふみちゃんの元コード（buildSchedule/render など）をそのまま配置しています。
-   ※ 長文のため省略不可：上のメッセージで貼ってくれた “大きいスクリプト(IIFE)” を
-      丸ごとこの位置に入れてください（内容は未変更でOK） */
-</script>
+<!-- 前回入力アシスト（localStorage） -->
+        <script>
+            (function () {
+                const STORE_KEY = "autoLoanPRO:last-v2";
+                const TARGETS = ["price", "fees", "down", "tradein", "rate", "months", "bonusAmount", "balloonYen", "balloonPct"];
+                function saveState() {
+                    const s = {}; TARGETS.forEach(id => { const el = document.getElementById(id); if (el) s[id] = el.value; });
+                    localStorage.setItem(STORE_KEY, JSON.stringify(s));
+                }
+                function showAssist() {
+                    let s = {}; try { s = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch (_) { }
+                    TARGETS.forEach(id => {
+                        const el = document.getElementById(id); if (!el) return;
+
+
+                        // 既存 showAssist 内の該当部分をこの形に
+                        const container = el.closest(".field") || el.parentNode;  // ← ここがポイント
+                        let prev = container.querySelector(".assist");
+                        if (!s[id]) { if (prev) prev.remove(); return; }
+                        if (!prev) {
+                            prev = document.createElement("small");
+                            prev.className = "assist";
+                            container.appendChild(prev);   // ← .field直下に置く
+                        }
+                        prev.textContent = "前回: " + s[id];
+                        prev.onclick = () => {
+                            el.value = s[id];
+                            el.dispatchEvent(new Event("input", { bubbles: true }));
+                            el.dispatchEvent(new Event("change", { bubbles: true }));
+                        };
+
+                    });
+                }
+                TARGETS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const handler = () => { saveState(); showAssist(); };
+                    el.addEventListener("change", handler);
+                    el.addEventListener("input", handler);   // ← 追加（任意）
+                });
+
+                window.addEventListener("load", showAssist);
+            })();
+        </script>
 
 <!-- ==== インストール誘導（beforeinstallprompt） ==== -->
 <script>
