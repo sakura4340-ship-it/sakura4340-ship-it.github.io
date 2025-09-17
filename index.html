@@ -79,6 +79,23 @@
     .spinV .step{width:20px!important;height:14px!important;font-size:10px!important;border-radius:4px!important;padding:0!important}
     .spinV .vstep{gap:4px!important;right:4px!important}
     .spinV input{padding-right:44px!important}
+
+    /* --- タップ時の青ハイライトを消す（iOS/Safari/Chrome） --- */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* --- テキスト選択を全体で禁止、フォームだけ許可 --- */
+html, body, header, main, .card, .content, .tile, .tab, label, .chip, button {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+input, textarea, select {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  cursor: text;
+}
+button { cursor: pointer; }
+
   </style>
 </head>
 
